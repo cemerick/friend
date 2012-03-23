@@ -9,6 +9,10 @@
                  
                  [org.mindrot/jbcrypt "0.3m"]
                  
+                 ;; http-basic
+                 [org.clojure/data.codec "0.1.0"]
+                 
+                 
                  ;; TODO no!
                  [ring-mock "0.1.1"]]
   :plugins [[lein-eclipse "1.0.0"]]
