@@ -6,6 +6,7 @@
   :dependencies [[org.clojure/clojure "1.3.0"]
                  [ring/ring-core "1.0.2"]
                  [robert/hooke "1.1.2"]
+                 [slingshot "0.10.2"]
                  
                  [org.mindrot/jbcrypt "0.3m"]
                  
