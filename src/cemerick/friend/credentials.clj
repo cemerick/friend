@@ -20,6 +20,6 @@
                   :other :config ...}
      ring-handler-to-be-secured)"
   [load-credentials-fn {:keys [username password]}]
-  (let [creds (load-credentials-fn username)]
+  (when-let [creds (load-credentials-fn username)]
     (when (BCrypt/checkpw password (:password creds))
       (dissoc creds :password))))

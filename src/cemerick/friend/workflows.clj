@@ -39,3 +39,24 @@
           ::friend/transient true)
         (http-basic-deny realm request))
       {:status 400 :body "Malformed Authorization header for HTTP Basic authentication."})))
+
+(defn interactive-form-deny
+  [login-uri {:keys [params] :as request}]
+  (ring.util.response/redirect (let [param (str "&login_failed=Y&username=" (:username params))]
+                                 (str (if (.contains login-uri "?") login-uri (str login-uri "?"))
+                                      param))))
+
+(defn interactive-form
+  [& {:keys [login-uri credential-fn login-failure-handler]
+      :or {login-uri "/login"
+           login-failure-handler #'interactive-form-deny}}]
+  (fn [{:keys [uri request-method params] :as request}]
+    (when (and (= login-uri uri)
+               (= :post request-method))
+      (let [{:keys [username password] :as creds} (select-keys params [:username :password])]
+        (if-let [user-record (and username password
+                                  ((find-credential-fn credential-fn request :interactive-form)
+                                    (assoc creds ::friend/workflow :interactive-form)))]
+          (assoc user-record ::friend/workflow :interactive-form)
+          (interactive-form-deny login-uri request))))))
+
