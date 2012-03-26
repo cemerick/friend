@@ -1,7 +1,7 @@
 (ns cemerick.friend
   (:require [clojure.set :as set])
   (:use (ring.util [response :as response :only (redirect)])
-        [slingshot.slingshot :only (throw+)]))
+        [slingshot.slingshot :only (throw+ try+)]))
 
 (defn- original-url
   [{:keys [scheme server-name server-port uri query-string]}]

@@ -51,13 +51,13 @@ suspicious days. Those were happier times. Now let us go!"
 
 Workflows use a credential function to verify the credentials provided to them.
 Credential functions can be specified either as a `:credential-fn` option to
-`cemerick.friend/authenticate`, or often as (an overriding) `:credential-fn` option to
-individual workflow functions.
+`cemerick.friend/authenticate`, or often as (an overriding) `:credential-fn`
+option to individual workflow functions.
 
-All credential functions take a single argument, a map containing the
-available credentials, and hopefully a `:cemerick.friend/workflow` slot
-identifying which workflow has produced the credential.  For example, the
-default form-based authentication credential map looks like this:
+All credential functions take a single argument, a map containing the available
+credentials, and hopefully a `:cemerick.friend/workflow` slot identifying which
+workflow has produced the credential.  For example, the default form-based
+authentication credential map looks like this:
 
 ```clojure
 {:username "…" :password "…" :cemerick.friend/workflow :form}
@@ -70,7 +70,17 @@ password, but rather a token returned by an OpenID provider).
 
 If a map of credentials is verified by a credential function, it should return a
 _authentication map_ that aggregates all authentication and authorization
-information available for the identified user.
+information available for the identified user.  This map may contain many
+entries, depending upon the authentication information that is relevant for the
+workflow in question and the user data relevant to the application:
+
+* `:identity` (**required**) corresponds with e.g. the username in a form or
+  HTTP Basic authentication, an oAuth token, etc.
+* `:roles`, an optional set of values enumerating the roles for which the user
+  is authorized.
+
+If a map of credentials is found to be invalid, the credential function must
+return nil.
 
 #### Authentication retention (or not)
 
@@ -95,13 +105,12 @@ use the `logout` middleware to ensure that that entry
 
 Individual authentication methods (e.g., form-based auth, HTTP Basic, OpenID,
 oAuth, etc.) are implemented as _workflows_ in Friend.  A workflow is a regular
-Ring
-handler function, except that, rather than potentially returning a
-Ring response, a workflow function can opt to return an authentication map if a
+Ring handler function, except that, rather than potentially returning a Ring
+response, a workflow function can opt to return an authentication map if a
 request has been authenticated fully.
 
-* :salts
-* :crypts/ciphers
+* salts
+* crypts/ciphers
 * remember-me
 * role-based authentication
 * run-as/sudo/multi-user login
@@ -109,10 +118,6 @@ request has been authenticated fully.
   * recognize / provide access to servlet principal
   * spring-security
 
-:user
-{:credentials []
- :roles #{}
- }
 
 ## License
 
