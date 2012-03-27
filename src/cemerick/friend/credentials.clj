@@ -7,7 +7,7 @@
    passwords included in stored user credentials that are to be later verified
    using `bcrypt-credential-fn`."
   [password & {:keys [work-factor]}]
-  (BCrypt/hashpw password (when work-factor
+  (BCrypt/hashpw password (if work-factor
                             (BCrypt/gensalt work-factor)
                             (BCrypt/gensalt))))
 
