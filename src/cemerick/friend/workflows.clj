@@ -16,10 +16,10 @@
              "WWW-Authenticate" (format "Basic realm=\"%s\"" realm)}})
 
 (defn http-basic
-  [{:keys [credential-fn realm]}
-   {{:strs [authorization]} :headers :as request}]
-  (when authorization
-    (if-let [[[_ username password]] (try (-> (subs authorization 6)  ; trimming "Basic "
+  [& {:keys [credential-fn realm]}]
+  (fn [{{:strs [authorization]} :headers :as request}]
+    (when authorization
+      (if-let [[[_ username password]] (try (-> (subs authorization 6)  ; trimming "Basic "
                                               trim
                                               (.getBytes "UTF-8")
                                               Base64/decodeBase64
@@ -38,7 +38,7 @@
           ::friend/workflow :http-basic
           ::friend/transient true)
         (http-basic-deny realm request))
-      {:status 400 :body "Malformed Authorization header for HTTP Basic authentication."})))
+      {:status 400 :body "Malformed Authorization header for HTTP Basic authentication."}))))
 
 (defn interactive-form-deny
   [login-uri {:keys [params] :as request}]
