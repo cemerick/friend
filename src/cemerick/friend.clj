@@ -14,7 +14,7 @@
        (when (seq query-string)
          (str \? query-string))))
 
-(def ^:dynamic *default-scheme-ports* {:http 80 :https 443})
+(def ^{:dynamic true} *default-scheme-ports* {:http 80 :https 443})
 
 (defn requires-scheme
   "Ring middleware that requires that the given handler be accessed using
@@ -63,9 +63,9 @@
   [m]
   (-> m :session ::auth))
 
-(def ^:dynamic *current-auth*
-  "A threadlocal reference to the value of (get-auth request)."
-  nil)
+(def ^{:dynamic true
+       :doc "A threadlocal reference to the value of (get-auth request)."}
+      *current-auth* nil)
 
 (defn authenticate
   [{:keys [retain-auth allow-anon unauthorized-handler
