@@ -31,12 +31,11 @@
                                            ; TODO should figure out logging for widely-used library; just use tools.logging?
                                            (.printStackTrace e)))]
       (if-let [user-record ((find-credential-fn credential-fn request :http-basic)
-                             {:username username
-                              :password password
-                              ::friend/workflow :http-basic})]
-        (assoc user-record
-          ::friend/workflow :http-basic
-          ::friend/transient true)
+                             ^{::friend/workflow :http-basic} {:username username
+                                                               :password password})]
+        (with-meta user-record {::friend/workflow :http-basic
+                                ::friend/transient true
+                                :type ::friend/auth})
         (http-basic-deny realm request))
       {:status 400 :body "Malformed Authorization header for HTTP Basic authentication."}))))
 
@@ -55,8 +54,9 @@
       (let [{:keys [username password] :as creds} (select-keys params [:username :password])]
         (if-let [user-record (and username password
                                   ((find-credential-fn credential-fn request :interactive-form)
-                                    (assoc creds ::friend/workflow :interactive-form)))]
-          (assoc user-record ::friend/workflow :interactive-form)
+                                    (with-meta creds {::friend/workflow :interactive-form})))]
+          (with-meta user-record {::friend/workflow :interactive-form
+                                  :type ::friend/auth})
           ((or login-failure-handler
                (partial #'interactive-form-deny login-uri)) request))))))
 

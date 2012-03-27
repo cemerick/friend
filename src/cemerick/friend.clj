@@ -79,31 +79,30 @@
                    (->> (map #(% (assoc request ::auth-config config)) workflows)
                      (filter boolean)
                      first))]
-      
       (binding [*current-auth* (and auth auth)]
-        (if (and (not auth) (not allow-anon))
-          (unauthorized-handler request)
-        (try+
-          (let [resp (if auth
-                       (handler (retain-auth* request auth))
-                       (handler request))]
-            (println "retaining auth" retain-auth)
-            (println "b" *current-auth*)
-            (if (and retain-auth
-                     ;; some workflows shouldn't be retained, or retaining them
-                     ;; serves no purpose (e.g. http basic)
-                     (not (::transient auth))
-                     ;; a false auth is used by logout or nested non-retention; anything
-                     ;; else produced by a handler is assumed to either be functional
-                     ;; maintenance of the existing authentication or a login escalation
-                     ;; that we want to percolate up anyway
-                     (nil? (get-auth resp)))
-              (retain-auth* resp *current-auth*)  ;; make way for support for multiple logins
-              (logout* resp)))
-          (catch [:type :unauthorized] error-map
-            ;; TODO again, figure out logging
-            (println error-map)
-            (unauthorized-handler request))))))))
+        (cond
+          (and (not auth) (not allow-anon)) (unauthorized-handler request)
+          (and auth (not= ::auth (type auth))) auth
+          :else (try+
+                  (let [resp (if auth
+                               (handler (retain-auth* request auth))
+                               (handler request))]
+                    (if (and *current-auth*
+                             retain-auth
+                             ;; some workflows shouldn't be retained, or retaining them
+                             ;; serves no purpose (e.g. http basic)
+                             (not (::transient (meta auth)))
+                             ;; a false auth is used by logout or nested non-retention; anything
+                             ;; else produced by a handler is assumed to either be functional
+                             ;; maintenance of the existing authentication or a login escalation
+                             ;; that we want to percolate up anyway
+                             (nil? (get-auth resp)))
+                      (retain-auth* resp *current-auth*)  ;; make way for support for multiple logins
+                      (logout* resp)))
+                  (catch [:type :unauthorized] error-map
+                    ;; TODO again, figure out logging
+                    (println error-map)
+                    (unauthorized-handler request))))))))
 
 (defn authorize*
   "Returns true if at least one role in the :roles in the given authentication map

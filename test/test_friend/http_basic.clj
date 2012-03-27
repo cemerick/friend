@@ -16,14 +16,15 @@
     (let [auth ((http-basic :realm "friend-test" :credential-fn (fn [{:keys [username password] :as creds}]
                                                                   (is (= "Aladdin" username))
                                                                   (is (= "open sesame" password))
-                                                                  (is (= :http-basic (::friend/workflow creds)))
+                                                                  (is (= :http-basic (::friend/workflow (meta creds))))
                                                                   (reset! got-creds true)
                                                                   {:identity username}))
                  (header req "Authorization" auth))]
       (is @got-creds)
-      (is (= auth {:identity "Aladdin"
-                   ::friend/workflow :http-basic
-                   ::friend/transient true})))
+      (is (= auth {:identity "Aladdin"}))
+      (is (= (meta auth) {::friend/workflow :http-basic
+                          ::friend/transient true
+                          :type ::friend/auth})))
     
     (is (= {:status 401, :headers {"Content-Type" "text/plain", "WWW-Authenticate" "Basic realm=\"friend-test\""}}
            ((http-basic :realm "friend-test" :credential-fn (constantly nil))
@@ -34,7 +35,7 @@
         login-uri "/my_login"
         form-handler (interactive-form :login-uri login-uri
                                        :credential-fn (fn [{:keys [username password] :as creds}]
-                                                        (is (= :interactive-form (::friend/workflow creds)))
+                                                        (is (= :interactive-form (::friend/workflow (meta creds))))
                                                         (reset! got-creds true)
                                                         (when (and (= "open sesame" password)
                                                                    (= "Aladdin" username))
@@ -52,7 +53,9 @@
            (form-handler (assoc (request :post login-uri)
                                 :params {:username "foo"}))))
     
-    (is (= {::friend/workflow :interactive-form, :identity "Aladdin"}
-           (form-handler (assoc (request :post login-uri)
-                                :params {:username "Aladdin"
-                                         :password "open sesame"}))))))
+    (let [auth (form-handler (assoc (request :post login-uri)
+                                    :params {:username "Aladdin"
+                                             :password "open sesame"}))] 
+      (is (= auth {:identity "Aladdin"}))
+      (is (= (meta auth) {::friend/workflow :interactive-form
+                          :type ::friend/auth})))))
