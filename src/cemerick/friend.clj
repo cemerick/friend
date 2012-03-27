@@ -44,7 +44,7 @@
 
 (defn- retain-auth*
   [m auth]
-  (assoc-in m [:session] ::auth auth))
+  (assoc-in m [:session ::auth] auth))
 
 (defn- logout*
   [response]
@@ -75,13 +75,20 @@
          unauthorized-handler #'default-unauthorized-handler}}
    handler]
   (fn [request]
-    (if-let [auth (or (get-auth request)
-                      (->> (map #(% (assoc request ::auth-config config)) workflows)
-                        (filter boolean)
-                        first))]
-      (binding [*current-auth* auth]
+    (let [auth (or (get-auth request)
+                   (->> (map #(% (assoc request ::auth-config config)) workflows)
+                     (filter boolean)
+                     first))]
+      
+      (binding [*current-auth* (and auth auth)]
+        (if (and (not auth) (not allow-anon))
+          (unauthorized-handler request)
         (try+
-          (let [resp (handler (retain-auth* request auth))]
+          (let [resp (if auth
+                       (handler (retain-auth* request auth))
+                       (handler request))]
+            (println "retaining auth" retain-auth)
+            (println "b" *current-auth*)
             (if (and retain-auth
                      ;; some workflows shouldn't be retained, or retaining them
                      ;; serves no purpose (e.g. http basic)
@@ -96,10 +103,7 @@
           (catch [:type :unauthorized] error-map
             ;; TODO again, figure out logging
             (println error-map)
-            (unauthorized-handler request))))
-      (if allow-anon
-        (handler request)
-        (unauthorized-handler request)))))
+            (unauthorized-handler request))))))))
 
 (defn authorize*
   "Returns true if at least one role in the :roles in the given authentication map
