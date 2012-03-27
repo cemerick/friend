@@ -11,7 +11,7 @@
                  [org.mindrot/jbcrypt "0.3m"]
                  
                  ;; http-basic
-                 [org.clojure/data.codec "0.1.0"]]
+                 [commons-codec "1.6"]]
   :dev-dependencies [[ring-mock "0.1.1"]]
   :profiles {:dev {:dependencies [[ring-mock "0.1.1"]]}
              :1.4 {:dependencies [[org.clojure/clojure "1.4.0-alpha1"]]}})

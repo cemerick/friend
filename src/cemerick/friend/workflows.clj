@@ -1,7 +1,7 @@
 (ns cemerick.friend.workflows
-  (:require [cemerick.friend :as friend]
-            [clojure.data.codec.base64 :as base64])
-  (:use [clojure.string :only (trim)]))
+  (:require [cemerick.friend :as friend])
+  (:use [clojure.string :only (trim)])
+  (:import org.apache.commons.codec.binary.Base64))
 
 (defn find-credential-fn
   [local-credential-fn request workflow]
@@ -22,7 +22,7 @@
     (if-let [[[_ username password]] (try (-> (subs authorization 6)  ; trimming "Basic "
                                               trim
                                               (.getBytes "UTF-8")
-                                              base64/decode
+                                              Base64/decodeBase64
                                               (String. "UTF-8")
                                               (#(re-seq #"([^:]+):(.*)" %)))
                                          (catch Exception e
@@ -48,8 +48,7 @@
 
 (defn interactive-form
   [& {:keys [login-uri credential-fn login-failure-handler]
-      :or {login-uri "/login"
-           login-failure-handler #'interactive-form-deny}}]
+      :or {login-uri "/login"}}]
   (fn [{:keys [uri request-method params] :as request}]
     (when (and (= login-uri uri)
                (= :post request-method))
@@ -58,5 +57,6 @@
                                   ((find-credential-fn credential-fn request :interactive-form)
                                     (assoc creds ::friend/workflow :interactive-form)))]
           (assoc user-record ::friend/workflow :interactive-form)
-          (interactive-form-deny login-uri request))))))
+          ((or login-failure-handler
+               (partial #'interactive-form-deny login-uri)) request))))))
 
