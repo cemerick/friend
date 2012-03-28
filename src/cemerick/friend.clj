@@ -1,7 +1,8 @@
 (ns cemerick.friend
   (:require [clojure.set :as set])
   (:use (ring.util [response :as response :only (redirect)])
-        [slingshot.slingshot :only (throw+ try+)]))
+        [slingshot.slingshot :only (throw+ try+)])
+  (:refer-clojure :exclude (identity)))
 
 (defn- original-url
   [{:keys [scheme server-name server-port uri query-string]}]
@@ -42,73 +43,145 @@
                                   :scheme scheme
                                   :server-port (scheme-mapping scheme))))))))
 
-(defn- retain-auth*
+(defn merge-authentication
   [m auth]
-  (assoc-in m [:session ::auth] auth))
+  (update-in m [:session ::identity]
+             #(-> (assoc-in % [:authentications (:identity auth)] auth)
+                (assoc :current (:identity auth)))))
 
 (defn- logout*
   [response]
-  (assoc-in response [:session ::auth] false))
+  (assoc-in response [:session ::identity] {}))
 
 (defn logout
+  "Ring middleware that modifies the response to drop all retained authentications."
   [handler]
-  #(logout* (handler %)))
+  #(when-let [response (handler %)]
+     (logout* response)))
 
 (defn- default-unauthorized-handler
   [request]
-  {:status 401})
+  {:status 401
+   :body "Sorry, you do not have access to this resource."})
 
-(defn get-auth
-  "Returns the ::auth(entication) entry for the given request or response."
+(defn identity
+  "Returns the identity associated with the given request or response.
+   This will either be nil (for an anonymous user/session) or a map
+   containing:
+
+     :current - the name of the current authentication, must be a key into
+                the map in the :authentications slot
+     :authentications - a map with values of authentication maps keyed
+                by their :identity."
   [m]
-  (-> m :session ::auth))
+  (-> m :session ::identity))
+
+(defn current-identity
+  [m]
+  (when-let [ids (identity m)]
+    (-> ids :authentications (get (:current ids)))))
+
+(defn auth?
+  "Returns true only if the argument is an authentication map (i.e. has
+   a :type of ::identity)."
+  [x]
+  (= ::identity (type x)))
 
 (def ^{:dynamic true
-       :doc "A threadlocal reference to the value of (get-auth request)."}
-      *current-auth* nil)
+       :doc "A threadlocal reference to the value of (identity request).
+
+This is fundamentally here only to support `authorize` and its derivatives.
+In general, you should not touch this; use `authentications` to obtain the
+current authentications from the Ring request."}
+      *identity* nil)
+
+(defn- drop-transient-authentications
+  [auth]
+  ;; some workflows shouldn't be retained, or retaining them
+  ;; serves no purpose (e.g. http basic)
+  (into {} (for [[identity auth :as p] auth
+                 :when (not (::transient (meta auth)))]
+             p)))
+
+(defn- clear-authentications
+  [response]
+  (update-in response [:session] dissoc ::identity))
+
+(defn retain-auth
+  [auth retain-auth? response]
+  (if-not retain-auth?
+    (clear-authentications response)
+    (let [auth (drop-transient-authentications (or (identity response) auth))]
+      (if (seq auth)
+        (assoc-in response [:session ::identity] auth)
+        (clear-authentications response)))))
+
+;; ring.util.response/response?, pulled from ring v1.1.0-beta
+(defn- ring-response?
+  [resp]
+  (and (map? resp)
+       (integer? (:status resp))
+       (map? (:headers resp))))
+
+(defn- prep-ring-response
+  [request response]
+  (let [response (if (ring-response? response)
+                   response
+                   (response/response response))]
+    (if (:session response)
+      response
+      (assoc response :session (:session request)))))
 
 (defn authenticate
-  [{:keys [retain-auth allow-anon unauthorized-handler
-           credential-fn workflows] :as config
-    :or {retain-auth true allow-anon true
+  [{:keys [retain-auth? allow-anon? unauthorized-redirect unauthorized-handler
+           default-landing-uri credential-fn workflows] :as config
+    :or {retain-auth? true, allow-anon? true
+         default-landing-uri "/"
          credential-fn (constantly nil)
          unauthorized-handler #'default-unauthorized-handler}}
    handler]
   (fn [request]
-    (let [auth (or (get-auth request)
-                   (->> (map #(% (assoc request ::auth-config config)) workflows)
-                     (filter boolean)
-                     first))]
-      (binding [*current-auth* (and auth auth)]
-        (cond
-          (and (not auth) (not allow-anon)) (unauthorized-handler request)
-          (and auth (not= ::auth (type auth))) auth
-          :else (try+
-                  (let [resp (if auth
-                               (handler (retain-auth* request auth))
-                               (handler request))]
-                    (if (and *current-auth*
-                             retain-auth
-                             ;; some workflows shouldn't be retained, or retaining them
-                             ;; serves no purpose (e.g. http basic)
-                             (not (::transient (meta auth)))
-                             ;; a false auth is used by logout or nested non-retention; anything
-                             ;; else produced by a handler is assumed to either be functional
-                             ;; maintenance of the existing authentication or a login escalation
-                             ;; that we want to percolate up anyway
-                             (nil? (get-auth resp)))
-                      (retain-auth* resp *current-auth*)  ;; make way for support for multiple logins
-                      (logout* resp)))
-                  (catch [:type :unauthorized] error-map
-                    ;; TODO again, figure out logging
-                    (println error-map)
-                    (unauthorized-handler request))))))))
+    (let [request (assoc request ::auth-config config)
+          workflow-result (->> (map #(% request) workflows)
+                            (filter boolean)
+                            first)]
+      
+      ;;TODO
+      (binding [*print-meta* true] (prn "workflow " workflow-result))
+      
+      (if (and workflow-result
+               (not (auth? workflow-result)))
+        workflow-result                             ;; workflow assumed to be a ring response
+        (let [new-auth? (auth? workflow-result)
+              request (if new-auth?
+                        (merge-authentication request workflow-result)
+                        request)
+              auth (identity request)]
+          
+          ;;TODO
+          (binding [*print-meta* true] (prn auth))
+          
+          (binding [*identity* auth]
+            (if (not (or auth allow-anon?))
+              (unauthorized-handler request)
+              (try+
+                (let [response (if new-auth?
+                                 (ring.util.response/redirect (or (-> request :session ::unauthorized-uri)
+                                                                  default-landing-uri))
+                                 (handler request))]
+                  (retain-auth auth retain-auth? (prep-ring-response request response)))
+                (catch [:type ::unauthorized] error-map
+                  ;; TODO log unauthorized access at trace level
+                  (if (or *identity* (not unauthorized-redirect))
+                    (unauthorized-handler request)
+                    (assoc-in (ring.util.response/redirect unauthorized-redirect)
+                              [:session ::unauthorized-uri] (:uri request))))))))))))
 
-(defn authorize*
+(defn authorized?
   "Returns true if at least one role in the :roles in the given authentication map
    matches one of the roles in the provided set."
-  [roles auth]
-  (let [granted-roles (:roles auth)]
+  [roles identity]
+  (let [granted-roles (:roles identity)]
     (boolean (seq (set/intersection roles granted-roles)))))
 
 (defn wrap-authorize
@@ -117,10 +190,11 @@
    unauthorized-handler configured in the `authenticate` middleware."
   [roles handler]
   (fn [request]
-    (if (authorize* roles (get-auth request))
+    
+    (if (authorized? roles (current-identity request))
       (handler request)
-      (throw+ {:type :unauthorized
-               ::auth (get-auth request)
+      (throw+ {:type ::unauthorized
+               ::identity (identity request)
                :wrapped-handler handler
                :roles roles}))))
 
@@ -130,16 +204,16 @@
    thrown up to the unauthorized-handler configured in the `authenticate`
    middleware.
 
-   Note that this macro depends upon the *current-auth* binding to obtain the
-   currently-authenticated user's info.  This will work fine in e.g. agent sends
+   Note that this macro depends upon the *identity* var being bound to the
+   current user's authentications.  This will work fine in e.g. agent sends
    and futures and such, but will fall down in places where binding conveyance
    don't apply (e.g. lazy sequences, direct java.lang.Thread usages, etc)."
   [roles & body]
   `(let [roles# ~roles]
-     (if (authorize* roles# (:roles *current-auth*))
+     (if (authorized? roles# *identity*)
        (do ~@body)
-       (throw+ {:type :unauthorized
-                ::auth *current-auth*
+       (throw+ {:type ::unauthorized
+                ::identity *identity*
                 :expressions (quote [~body])
                 :roles roles#}))))
 
@@ -152,7 +226,7 @@
 
    (add-hook #'restricted-function (partial #{:admin} authorize-hook))
 
-   Like `authorize`, this depends upon *current-auth* being bound appropriately."
+   Like `authorize`, this depends upon *identity* being bound appropriately."
   ;; that example will result in the hook being applied multiple times if
   ;; loaded in a REPL multiple times — but, authorize-hook composes w/o a problem
   [roles f & args]
