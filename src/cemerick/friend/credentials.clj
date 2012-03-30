@@ -1,7 +1,7 @@
 (ns cemerick.friend.credentials
   (:import org.mindrot.jbcrypt.BCrypt))
 
-(defn bcrypt-hash-password
+(defn hash-bcrypt
   "Hashes a given plaintext password using bcrypt and an optional
    :work-factor (defaults to 10 as of this writing).  Should be used to hash
    passwords included in stored user credentials that are to be later verified
