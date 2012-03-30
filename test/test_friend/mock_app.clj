@@ -1,0 +1,91 @@
+(ns test-friend.mock-app
+  (:require [cemerick.friend :as friend]
+            (cemerick.friend [workflows :as workflows]
+                             [credentials :as creds])
+            [cheshire.core :as json]
+            [robert.hooke :as hooke]
+            [ring.util.response :as resp]
+            (compojure [route :as route]
+                       [handler :as handler]))
+  (:use [compojure.core :only (GET ANY defroutes)]))
+
+
+(def page-bodies {"/login" "Login page here."
+                  "/" "Homepage."
+                  "/admin" "Admin page."
+                  "/account" "User account page."
+                  "/authorize-user" "User authorization verified."
+                  "/authorize-admin" "Admin authorization verified."
+                  "/hook-admin" "Should be admin only."})
+
+(def mock-app-realm "mock-app-realm")
+
+(defn- json-response
+  [x]
+  (-> (json/generate-string x)
+    resp/response
+    (resp/content-type "application/json")))
+
+(defn- api-call
+  [value]
+  (json-response {:data value}))
+
+(defroutes ^{:private true} anon
+  (GET "/" request (page-bodies (:uri request)))
+  (GET "/login" request (page-bodies (:uri request)))
+  (GET "/free-api" request (api-call 99))
+  (friend/logout (ANY "/logout" request (resp/redirect "/"))))
+
+(defn- admin-hook-authorized-fn
+  [request]
+  (page-bodies (:uri request)))
+
+(hooke/add-hook #'admin-hook-authorized-fn
+                (partial #{:admin} friend/authorize-hook))
+
+(defroutes ^{:private true} interactive-secured
+  (friend/wrap-authorize #{:admin}
+    (GET "/admin" request (page-bodies (:uri request))))
+  (friend/wrap-authorize #{:user}
+    (GET "/account" request (page-bodies (:uri request))))
+  (GET "/authorize-user" request
+       (friend/authorize #{:user} (page-bodies (:uri request))))
+  (GET "/authorize-admin" request
+       (friend/authorize #{:admin} (page-bodies (:uri request))))
+  (GET "/hook-admin" request (admin-hook-authorized-fn request))
+  (GET "/echo-roles" request (-> (friend/identity request)
+                               (select-keys [:roles])
+                               json-response)))
+
+(defroutes ^{:private true} private-api
+  (friend/wrap-authorize #{}
+    (GET "/auth-api" request (api-call 42))))
+
+(def users {"root" {:username "root"
+                    :password (creds/hash-bcrypt "admin_password")
+                    :roles #{:admin}}
+            "jane" {:username "jane"
+                    :password (creds/hash-bcrypt "user_password")}})
+
+(defn- credential-fn
+  [{:keys [username password]}]
+  (let [user (users username)]
+    (when (and user (= password (:password user)))
+      (-> (update-in user [:roles] (fnil conj #{}) :user)
+        (dissoc :password)
+        (assoc :identity username)))))
+
+(defroutes ^{:private true} authorization-config
+  anon
+  interactive-secured
+  private-api
+  (ANY "/*" request {:status 404}))
+
+(def mock-app
+  (->> authorization-config
+    (friend/authenticate {:credential-fn credential-fn
+                          :unauthorized-redirect "/login"
+                          :workflows [(workflows/interactive-form
+                                        :login-uri "/login")
+                                      (workflows/http-basic :realm mock-app-realm)]})
+    handler/site))
