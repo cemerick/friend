@@ -184,19 +184,18 @@ current authentications from the Ring request."}
   (let [granted-roles (-> identity current-authentication :roles)]
     (boolean (seq (set/intersection roles granted-roles)))))
 
-(defn wrap-authorize
-  "Ring middleware that ensures that the authenticated user has one of the roles
-   in the given set; otherwise, the request will be handled by the
-   unauthorized-handler configured in the `authenticate` middleware."
-  [roles handler]
-  (fn [request]
-    
-    (if (authorized? roles (current-identity request))
-      (handler request)
-      (throw+ {:type ::unauthorized
-               ::identity (identity request)
-               :wrapped-handler handler
-               :roles roles}))))
+(defn throw-unauthorized
+  [identity & {:keys [required-roles exprs]}]
+  (throw+ (merge {:type ::unauthorized
+                  ::identity *identity*}
+            (when required-roles {:required-roles required-roles})
+            (when exprs {:exprs exprs}))))
+
+(defmacro authenticated
+  [& body]
+  `(if (current-authentication *identity*)
+     ~@body
+     (#'throw-unauthorized *identity* :exprs (quote [~@body]))))
 
 (defmacro authorize
   "Macro that allows the evaluation of the given body of code iff the authenticated
@@ -212,10 +211,7 @@ current authentications from the Ring request."}
   `(let [roles# ~roles]
      (if (authorized? roles# *identity*)
        (do ~@body)
-       (throw+ {:type ::unauthorized
-                ::identity *identity*
-                :expressions (quote [~body])
-                :roles roles#}))))
+       (throw-unauthorized *identity* :required-roles roles# :exprs (quote [~@body])))))
 
 (defn authorize-hook
   "Authorization function suitable for use as a hook with robert-hooke library.
@@ -231,3 +227,24 @@ current authentications from the Ring request."}
   ;; loaded in a REPL multiple times — but, authorize-hook composes w/o a problem
   [roles f & args]
   (authorize roles (apply f args)))
+
+;; Ring middleware for authorization is probably not workable
+;; Routes would need to be arranged very carefully to progress from least to most
+;; restrictive, and hierarchical representation of roles would be a must to avoid
+;; a combinatorial explosion of roles in the set used to configure the middleware
+;; e.g. requests for the anon-safe /foo would result in a 401 here:
+;; (routes
+;;   (wrap-authorize #{:user} (GET "/account" request ...))
+;;   (GET "/foo" request ...))
+#_(defn wrap-authorize
+  "Ring middleware that ensures that the authenticated user has one of the roles
+   in the given set; otherwise, the request will be handled by the
+   unauthorized-handler configured in the `authenticate` middleware."
+  [roles handler]
+  (fn [request]
+    (if (authorized? roles (-> request identity current-authentication))
+      (handler request)
+      (throw+ {:type ::unauthorized
+               ::identity (identity request)
+               :wrapped-handler handler
+               :roles roles}))))
