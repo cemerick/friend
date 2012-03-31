@@ -14,8 +14,6 @@
                   "/" "Homepage."
                   "/admin" "Admin page."
                   "/account" "User account page."
-                  "/authorize-user" "User authorization verified."
-                  "/authorize-admin" "Admin authorization verified."
                   "/hook-admin" "Should be admin only."})
 
 (def mock-app-realm "mock-app-realm")
@@ -41,39 +39,39 @@
   (page-bodies (:uri request)))
 
 (hooke/add-hook #'admin-hook-authorized-fn
-                (partial #{:admin} friend/authorize-hook))
+                (partial friend/authorize-hook #{:admin}))
 
 (defroutes ^{:private true} interactive-secured
-  (friend/wrap-authorize #{:admin}
-    (GET "/admin" request (page-bodies (:uri request))))
-  (friend/wrap-authorize #{:user}
-    (GET "/account" request (page-bodies (:uri request))))
-  (GET "/authorize-user" request
-       (friend/authorize #{:user} (page-bodies (:uri request))))
-  (GET "/authorize-admin" request
-       (friend/authorize #{:admin} (page-bodies (:uri request))))
+  (GET "/admin" request (friend/authorize #{:admin}
+                          (page-bodies (:uri request))))
+  (GET "/account" request (friend/authorize #{:user}
+                            (page-bodies (:uri request))))
   (GET "/hook-admin" request (admin-hook-authorized-fn request))
-  (GET "/echo-roles" request (-> (friend/identity request)
-                               (select-keys [:roles])
-                               json-response)))
+  (GET "/echo-roles" request (friend/authenticated
+                               (-> (friend/identity request)
+                                 (select-keys [:roles])
+                                 json-response))))
 
 (defroutes ^{:private true} private-api
-  (friend/wrap-authorize #{}
-    (GET "/auth-api" request (api-call 42))))
+  (GET "/auth-api" request (friend/authorize #{:api}
+                             (api-call 42))))
 
 (def users {"root" {:username "root"
                     :password (creds/hash-bcrypt "admin_password")
-                    :roles #{:admin}}
+                    :roles #{:admin :user}}
             "jane" {:username "jane"
-                    :password (creds/hash-bcrypt "user_password")}})
+                    :password (creds/hash-bcrypt "user_password")
+                    :roles #{:admin :user}}})
+
+(def api-users {"api-key" {:username "api-key"
+                           :password (creds/hash-bcrypt "api-pass")
+                           :roles #{:api}}})
 
 (defn- credential-fn
-  [{:keys [username password]}]
+  [users {:keys [username password]}]
   (let [user (users username)]
     (when (and user (= password (:password user)))
-      (-> (update-in user [:roles] (fnil conj #{}) :user)
-        (dissoc :password)
-        (assoc :identity username)))))
+      (assoc user :identity username))))
 
 (defroutes ^{:private true} authorization-config
   anon
@@ -83,9 +81,11 @@
 
 (def mock-app
   (->> authorization-config
-    (friend/authenticate {:credential-fn credential-fn
+    (friend/authenticate {:credential-fn (partial creds/bcrypt-credential-fn users)
                           :unauthorized-redirect "/login"
                           :workflows [(workflows/interactive-form
                                         :login-uri "/login")
-                                      (workflows/http-basic :realm mock-app-realm)]})
+                                      (workflows/http-basic
+                                        :credential-fn (partial creds/bcrypt-credential-fn api-users)
+                                        :realm mock-app-realm)]})
     handler/site))

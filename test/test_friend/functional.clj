@@ -38,11 +38,10 @@
     (is (= {:data 99} (:body api-resp)))))
 
 (deftest login-redirect
-  (doseq [[_ url] (urls "/auth-api" "/echo-roles" "/hook-admin"
-                    "/authorize-admin" "/authorize-user"
+  (doseq [[uri url] (urls "/auth-api" "/echo-roles" "/hook-admin"
                     "/account" "/admin")
           :let [resp (http/get url)]]
-    (is (= (page-bodies "/login") (:body resp)))))
+    (is (= (page-bodies "/login") (:body resp)) uri)))
 
 (deftest http-basic-invalid
   (try+
@@ -51,4 +50,11 @@
     (catch [:status 401] {{:strs [www-authenticate]} :headers}
       (is (= (str "Basic realm=\"" mock-app-realm \"))))))
 
+(deftest http-basic
+  (is (= {:data 42} (-> (url "/auth-api")
+                      (http/get {:basic-auth "api-key:api-pass" :as :json})
+                      :body))))
 
+
+;;;; TODO
+; requires-scheme
