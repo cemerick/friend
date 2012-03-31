@@ -15,6 +15,12 @@
    :headers {"Content-Type" "text/plain"
              "WWW-Authenticate" (format "Basic realm=\"%s\"" realm)}})
 
+(defn- username-as-identity
+  [user-record]
+  (if (:identity user-record)
+    user-record
+    (assoc user-record :identity (:username user-record))))
+
 (defn http-basic
   [& {:keys [credential-fn realm]}]
   (fn [{{:strs [authorization]} :headers :as request}]
@@ -31,11 +37,13 @@
                                            ; TODO should figure out logging for widely-used library; just use tools.logging?
                                            (.printStackTrace e)))]
       (if-let [user-record ((find-credential-fn credential-fn request :http-basic)
-                             ^{::friend/workflow :http-basic} {:username username
-                                                               :password password})]
-        (with-meta user-record {::friend/workflow :http-basic
-                                ::friend/transient true
-                                :type ::friend/auth})
+                             ^{::friend/workflow :http-basic}
+                              {:username username, :password password})]
+        (with-meta (username-as-identity user-record)
+          {::friend/workflow :http-basic
+           ::friend/transient true
+           ::friend/redirect-on-auth? false
+           :type ::friend/auth})
         (http-basic-deny realm request))
       {:status 400 :body "Malformed Authorization header for HTTP Basic authentication."}))))
 
@@ -55,8 +63,9 @@
         (if-let [user-record (and username password
                                   ((find-credential-fn credential-fn request :interactive-form)
                                     (with-meta creds {::friend/workflow :interactive-form})))]
-          (with-meta user-record {::friend/workflow :interactive-form
-                                  :type ::friend/auth})
+          (with-meta (username-as-identity user-record)
+            {::friend/workflow :interactive-form
+             :type ::friend/auth})
           ((or login-failure-handler
                (partial #'interactive-form-deny login-uri)) request))))))
 

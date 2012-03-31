@@ -76,16 +76,11 @@
   [m]
   (-> m :session ::identity))
 
-(defn current-identity
-  [m]
-  (when-let [ids (identity m)]
-    (-> ids :authentications (get (:current ids)))))
-
 (defn auth?
   "Returns true only if the argument is an authentication map (i.e. has
-   a :type of ::identity)."
+   a (type) of ::auth)."
   [x]
-  (= ::identity (type x)))
+  (= ::auth (type x)))
 
 (def ^{:dynamic true
        :doc "A threadlocal reference to the value of (identity request).
@@ -94,6 +89,11 @@ This is fundamentally here only to support `authorize` and its derivatives.
 In general, you should not touch this; use `authentications` to obtain the
 current authentications from the Ring request."}
       *identity* nil)
+
+(defn current-authentication
+  ([] (current-authentication *identity*))
+  ([identity]
+    (-> identity :authentications (get (:current identity)))))
 
 (defn- drop-transient-authentications
   [auth]
@@ -165,7 +165,7 @@ current authentications from the Ring request."}
             (if (not (or auth allow-anon?))
               (unauthorized-handler request)
               (try+
-                (let [response (if new-auth?
+                (let [response (if (and new-auth? (::redirect-on-auth? (meta workflow-result) true))
                                  (ring.util.response/redirect (or (-> request :session ::unauthorized-uri)
                                                                   default-landing-uri))
                                  (handler request))]
@@ -181,7 +181,7 @@ current authentications from the Ring request."}
   "Returns true if at least one role in the :roles in the given authentication map
    matches one of the roles in the provided set."
   [roles identity]
-  (let [granted-roles (:roles identity)]
+  (let [granted-roles (-> identity current-authentication :roles)]
     (boolean (seq (set/intersection roles granted-roles)))))
 
 (defn wrap-authorize

@@ -23,6 +23,7 @@
       (is @got-creds)
       (is (= auth {:identity "Aladdin"}))
       (is (= (meta auth) {::friend/workflow :http-basic
+                          ::friend/redirect-on-auth? false
                           ::friend/transient true
                           :type ::friend/auth})))
     
