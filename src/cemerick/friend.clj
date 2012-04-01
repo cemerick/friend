@@ -96,23 +96,31 @@ current authentications from the Ring request."}
     (-> identity :authentications (get (:current identity)))))
 
 (defn- drop-transient-authentications
-  [auth]
+  [{:keys [current authentications] :as identity}]
   ;; some workflows shouldn't be retained, or retaining them
   ;; serves no purpose (e.g. http basic)
-  (into {} (for [[identity auth :as p] auth
-                 :when (not (::transient (meta auth)))]
-             p)))
+  (let [authentications (into {} (for [[identity auth :as p] authentications
+                                       :when (not (::transient (meta auth)))]
+                                   p))]
+    (if (get authentications current)
+        (assoc identity :authentications authentications)
+        (assoc identity
+               :authentications authentications
+               :current (first (first authentications))))))
 
 (defn- clear-authentications
   [response]
-  (update-in response [:session] dissoc ::identity))
+  (let [response (update-in response [:session] dissoc ::identity)]
+    (if (empty? (:session response))
+      (dissoc response :session)
+      response)))
 
 (defn retain-auth
   [auth retain-auth? response]
   (if-not retain-auth?
     (clear-authentications response)
-    (let [auth (drop-transient-authentications (or (identity response) auth))]
-      (if (seq auth)
+    (let [identity (drop-transient-authentications (or (identity response) auth))]
+      (if (seq (:authentications identity))
         (assoc-in response [:session ::identity] auth)
         (clear-authentications response)))))
 
@@ -123,13 +131,13 @@ current authentications from the Ring request."}
        (integer? (:status resp))
        (map? (:headers resp))))
 
-(defn- prep-ring-response
+(defn- preserve-session
   [request response]
-  (let [response (if (ring-response? response)
-                   response
-                   (response/response response))]
-    (if (:session response)
-      response
+  (let [response-map (if (ring-response? response)
+                       response
+                       (response/response response))]
+    (if (:session response-map)
+      response-map
       (assoc response :session (:session request)))))
 
 (defn authenticate
@@ -169,9 +177,10 @@ current authentications from the Ring request."}
                                  (ring.util.response/redirect (or (-> request :session ::unauthorized-uri)
                                                                   default-landing-uri))
                                  (handler request))]
-                  (retain-auth auth retain-auth? (prep-ring-response request response)))
+                  (retain-auth auth retain-auth? (preserve-session request response)))
                 (catch [:type ::unauthorized] error-map
                   ;; TODO log unauthorized access at trace level
+                  ;(println "unauthorized:" error-map)
                   (if (or *identity* (not unauthorized-redirect))
                     (unauthorized-handler request)
                     (assoc-in (ring.util.response/redirect unauthorized-redirect)

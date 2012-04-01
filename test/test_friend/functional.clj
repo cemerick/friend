@@ -51,9 +51,11 @@
       (is (= (str "Basic realm=\"" mock-app-realm \"))))))
 
 (deftest http-basic
-  (is (= {:data 42} (-> (url "/auth-api")
-                      (http/get {:basic-auth "api-key:api-pass" :as :json})
-                      :body))))
+  (let [{:keys [body cookies]} (http/get (url "/auth-api") {:basic-auth "api-key:api-pass"
+                                                            :as :json})]
+    (is (nil? cookies))
+    (is (= {:data 42} body))))
+
 
 
 ;;;; TODO
