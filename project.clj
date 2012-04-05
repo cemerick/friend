@@ -32,3 +32,6 @@
 ;; https://github.com/intridea/omniauth
 ;; https://github.com/brentonashworth/sandbar
 
+;; oauth
+; https://github.com/DerGuteMoritz/clj-oauth2 OR
+; https://github.com/mattrepl/clj-oauth
