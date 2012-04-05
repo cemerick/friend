@@ -7,13 +7,14 @@
             [ring.util.response :as resp]
             (compojure [route :as route]
                        [handler :as handler]))
-  (:use [compojure.core :only (GET ANY defroutes)]))
+  (:use [compojure.core :as compojure :only (GET ANY defroutes)]))
 
 
 (def page-bodies {"/login" "Login page here."
                   "/" "Homepage."
                   "/admin" "Admin page."
-                  "/account" "User account page."
+                  "/user/account" "User account page."
+                  "/user/private-page" "Other :user-private page."
                   "/hook-admin" "Should be admin only."})
 
 (def mock-app-realm "mock-app-realm")
@@ -41,14 +42,19 @@
 (hooke/add-hook #'admin-hook-authorized-fn
                 (partial friend/authorize-hook #{:admin}))
 
+(def ^{:private true} user-routes
+  (friend/wrap-authorize #{:user}
+    (compojure/routes
+      (GET "/account" request (page-bodies (:uri request)))
+      (GET "/private-page" request (page-bodies (:uri request))))))
+
 (defroutes ^{:private true} interactive-secured
   (GET "/admin" request (friend/authorize #{:admin}
                           (page-bodies (:uri request))))
-  (GET "/account" request (friend/authorize #{:user}
-                            (page-bodies (:uri request))))
+  (compojure/context "/user" request user-routes)
   (GET "/hook-admin" request (admin-hook-authorized-fn request))
   (GET "/echo-roles" request (friend/authenticated
-                               (-> (friend/identity request)
+                               (-> (friend/current-authentication)
                                  (select-keys [:roles])
                                  json-response))))
 
@@ -58,10 +64,10 @@
 
 (def users {"root" {:username "root"
                     :password (creds/hash-bcrypt "admin_password")
-                    :roles #{:admin :user}}
+                    :roles #{:admin}}
             "jane" {:username "jane"
                     :password (creds/hash-bcrypt "user_password")
-                    :roles #{:admin :user}}})
+                    :roles #{:user}}})
 
 (def api-users {"api-key" {:username "api-key"
                            :password (creds/hash-bcrypt "api-pass")
@@ -82,7 +88,7 @@
 (def mock-app
   (->> authorization-config
     (friend/authenticate {:credential-fn (partial creds/bcrypt-credential-fn users)
-                          :unauthorized-redirect "/login"
+                          :unauthorized-redirect-uri "/login"
                           :workflows [(workflows/interactive-form
                                         :login-uri "/login")
                                       (workflows/http-basic

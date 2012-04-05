@@ -39,7 +39,7 @@
 
 (deftest login-redirect
   (doseq [[uri url] (urls "/auth-api" "/echo-roles" "/hook-admin"
-                    "/account" "/admin")
+                    "/user/account" "/user/private-page" "/admin")
           :let [resp (http/get url)]]
     (is (= (page-bodies "/login") (:body resp)) uri)))
 
@@ -53,10 +53,44 @@
 (deftest http-basic
   (let [{:keys [body cookies]} (http/get (url "/auth-api") {:basic-auth "api-key:api-pass"
                                                             :as :json})]
-    (is (nil? cookies))
+    (is (nil? cookies)) ; basic shouldn't provoke session creation
     (is (= {:data 42} body))))
 
+(deftest user-login
+  (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
+    (is (= (page-bodies "/login") (:body (http/get (url "/user/account")))))
+    (let [resp (http/post (url "/login")
+                 {:form-params {:username "jane" :password "user_password"}})]
+      ; ensure that previously-requested page is redirected to upon redirecting authentication
+      ; clj-http *should* redirect us, but isn't yet; working on it: 
+      ; https://github.com/dakrone/clj-http/issues/57
+      (is (http/redirect? resp))
+      (is (= "/user/account" (-> resp :headers (get "location")))))
+    (are [uri] (is (= (page-bodies uri) (:body (http/get (url uri)))))
+         "/user/account"
+         "/user/private-page")
+    (is (= {:roles ["user"]} (:body (http/get (url "/echo-roles") {:as :json}))))))
 
+(deftest hooked-authorization
+  (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
+    (http/post (url "/login") {:form-params {:username "jane" :password "user_password"}})
+    (try+
+      (http/get (url "/hook-admin"))
+      (assert false "should never get here")
+      (catch [:status 401] resp
+        (is (= "Sorry, you do not have access to this resource." (:body resp)))))
+    
+    (http/post (url "/login") {:form-params {:username "root" :password "admin_password"}})
+    (is (= (page-bodies "/hook-admin")) (http/get (url "/hook-admin")))))
+
+(deftest admin-login
+  (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
+    (is (= (page-bodies "/login") (:body (http/get (url "/admin")))))
+    
+    (http/post (url "/login") {:form-params {:username "root" :password "admin_password"}})
+    (is (= (page-bodies "/admin")) (http/get (url "/admin")))
+    (is (= {:roles ["admin"]} (:body (http/get (url "/echo-roles") {:as :json}))))))
 
 ;;;; TODO
 ; requires-scheme
+; su

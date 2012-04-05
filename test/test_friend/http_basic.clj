@@ -11,7 +11,7 @@
     (is (nil? ((http-basic :realm "friend-test") req)))
     
     (println "Don't worry, an exception is expected here:")
-    (is (= 400 (:status ((http-basic) (header req "Authorization" "")))))
+    (is (= 400 (:status ((http-basic) (header req "Authorization" "BadAuthHeader")))))
     
     (let [auth ((http-basic :realm "friend-test" :credential-fn (fn [{:keys [username password] :as creds}]
                                                                   (is (= "Aladdin" username))

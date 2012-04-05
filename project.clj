@@ -15,7 +15,7 @@
   :profiles {:dev {:dependencies [[ring-mock "0.1.1"]
                                   [compojure "1.0.1"]
                                   [ring "1.0.2"]
-                                  [clj-http "0.3.4"]]}
+                                  [clj-http "0.3.6-SNAPSHOT"]]}
              :1.2 {:dependencies [[org.clojure/clojure "1.2.0"]]}
              :1.4 {:dependencies [[org.clojure/clojure "1.4.0-beta5"]]}}
   
@@ -23,7 +23,7 @@
   :dev-dependencies [[ring-mock "0.1.1"]
                      [compojure "1.0.1"]
                      [ring "1.0.2"]
-                     [clj-http "0.3.4"]])
+                     [clj-http "0.3.6-SNAPSHOT"]])
 
 ;; see:
 ;; https://github.com/hassox/warden/wiki

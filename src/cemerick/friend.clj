@@ -141,7 +141,7 @@ current authentications from the Ring request."}
       (assoc response :session (:session request)))))
 
 (defn authenticate
-  [{:keys [retain-auth? allow-anon? unauthorized-redirect unauthorized-handler
+  [{:keys [retain-auth? allow-anon? unauthorized-redirect-uri unauthorized-handler
            default-landing-uri credential-fn workflows] :as config
     :or {retain-auth? true, allow-anon? true
          default-landing-uri "/"
@@ -153,10 +153,7 @@ current authentications from the Ring request."}
           workflow-result (->> (map #(% request) workflows)
                             (filter boolean)
                             first)]
-      
-      ;;TODO
-      (binding [*print-meta* true] (prn "workflow " workflow-result))
-      
+      ;(binding [*print-meta* true] (println) (prn "workflow" workflow-result))      
       (if (and workflow-result
                (not (auth? workflow-result)))
         workflow-result                             ;; workflow assumed to be a ring response
@@ -165,26 +162,34 @@ current authentications from the Ring request."}
                         (merge-authentication request workflow-result)
                         request)
               auth (identity request)]
-          
-          ;;TODO
-          (binding [*print-meta* true] (prn auth))
-          
+          #_(binding [*print-meta* true]
+            (prn "session" (:session request))
+            (prn auth))
           (binding [*identity* auth]
             (if (not (or auth allow-anon?))
               (unauthorized-handler request)
               (try+
-                (let [response (if (and new-auth? (::redirect-on-auth? (meta workflow-result) true))
-                                 (ring.util.response/redirect (or (-> request :session ::unauthorized-uri)
-                                                                  default-landing-uri))
-                                 (handler request))]
-                  (retain-auth auth retain-auth? (preserve-session request response)))
+                (let [[response clear-redirect-uri]
+                      (if (and new-auth? (::redirect-on-auth? (meta workflow-result) true))
+                        (-> (or (-> request :session ::unauthorized-uri) default-landing-uri)
+                          response/redirect-after-post
+                          (vector true))
+                        [(handler request) false])]
+                  (retain-auth auth retain-auth? (update-in
+                                                   (preserve-session request response)
+                                                   [:session] dissoc ::unauthorized-uri)))
                 (catch [:type ::unauthorized] error-map
                   ;; TODO log unauthorized access at trace level
-                  ;(println "unauthorized:" error-map)
-                  (if (or *identity* (not unauthorized-redirect))
+                  #_(println "unauthorized:" #_(or *identity* (not unauthorized-redirect-uri)) error-map)
+                  #_(println "unauth resp" (assoc-in (ring.util.response/redirect unauthorized-redirect-uri)
+                              [:session ::unauthorized-uri] (:uri request)))
+                  (if (or auth (not unauthorized-redirect-uri))
                     (unauthorized-handler request)
-                    (assoc-in (ring.util.response/redirect unauthorized-redirect)
+                    (assoc-in (ring.util.response/redirect unauthorized-redirect-uri)
                               [:session ::unauthorized-uri] (:uri request))))))))))))
+
+(defmacro role-case
+  [])
 
 (defn authorized?
   "Returns true if at least one role in the :roles in the given authentication map
@@ -245,13 +250,14 @@ current authentications from the Ring request."}
 ;; (routes
 ;;   (wrap-authorize #{:user} (GET "/account" request ...))
 ;;   (GET "/foo" request ...))
-#_(defn wrap-authorize
+(defn wrap-authorize
   "Ring middleware that ensures that the authenticated user has one of the roles
    in the given set; otherwise, the request will be handled by the
    unauthorized-handler configured in the `authenticate` middleware."
   [roles handler]
   (fn [request]
-    (if (authorized? roles (-> request identity current-authentication))
+    ;(println "wrap" roles (-> request identity current-authentication))
+    (if (authorized? roles (identity request))
       (handler request)
       (throw+ {:type ::unauthorized
                ::identity (identity request)

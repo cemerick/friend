@@ -25,16 +25,17 @@
   [& {:keys [credential-fn realm]}]
   (fn [{{:strs [authorization]} :headers :as request}]
     (when authorization
-      (if-let [[[_ username password]] (try (-> (subs authorization 6)  ; trimming "Basic "
-                                              trim
+      (if-let [[[_ username password]] (try (-> (re-matches #"\s*Basic\s+(.+)" authorization)
+                                              second
                                               (.getBytes "UTF-8")
                                               Base64/decodeBase64
                                               (String. "UTF-8")
                                               (#(re-seq #"([^:]+):(.*)" %)))
                                          (catch Exception e
                                            ; could let this bubble up and have an error page take over,
-                                           ;   but basic is going to be for API usage, so...
+                                           ;   but basic is going to be used predominantly for API usage, so...
                                            ; TODO should figure out logging for widely-used library; just use tools.logging?
+                                           (println "Invalid Authorization header for HTTP Basic auth: " authorization)
                                            (.printStackTrace e)))]
       (if-let [user-record ((find-credential-fn credential-fn request :http-basic)
                              ^{::friend/workflow :http-basic}
