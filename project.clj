@@ -11,7 +11,12 @@
                  [org.mindrot/jbcrypt "0.3m"]
                  
                  ;; http-basic
-                 [commons-codec "1.6"]]
+                 [commons-codec "1.6"]
+                 
+                 ;; openid
+                 [org.openid4java/openid4java-consumer "0.9.6" :type "pom"]
+                 ; need different httpclient rev for https://issues.apache.org/jira/browse/HTTPCLIENT-1118
+                 [org.apache.httpcomponents/httpclient "4.2-beta1"]]
   :profiles {:dev {:dependencies [[ring-mock "0.1.1"]
                                   [compojure "1.0.1"]
                                   [ring "1.0.2"]

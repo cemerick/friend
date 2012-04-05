@@ -1,9 +1,11 @@
 (ns test-friend.mock-app
   (:require [cemerick.friend :as friend]
             (cemerick.friend [workflows :as workflows]
-                             [credentials :as creds])
+                             [credentials :as creds]
+                             [openid :as openid])
             [cheshire.core :as json]
             [robert.hooke :as hooke]
+            [hiccup.core :as hiccup]
             [ring.util.response :as resp]
             (compojure [route :as route]
                        [handler :as handler]))
@@ -31,6 +33,11 @@
 
 (defroutes ^{:private true} anon
   (GET "/" request (page-bodies (:uri request)))
+  (GET "/test-openid" request (hiccup/html [:html
+                                            [:form {:action "/openid" :method "POST"}
+                                             "OpenId endpoint: "
+                                             [:input {:type "text" :name "identifier"}]
+                                             [:input {:type "submit" :name "login"}]]]))
   (GET "/login" request (page-bodies (:uri request)))
   (GET "/free-api" request (api-call 99))
   (friend/logout (ANY "/logout" request (resp/redirect "/"))))
@@ -93,5 +100,6 @@
                                         :login-uri "/login")
                                       (workflows/http-basic
                                         :credential-fn (partial creds/bcrypt-credential-fn api-users)
-                                        :realm mock-app-realm)]})
+                                        :realm mock-app-realm)
+                                      (openid/workflow :credential-fn (comp ring.util.response/response pr-str))]})
     handler/site))
