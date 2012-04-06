@@ -89,7 +89,8 @@
              login-failure-handler]
       :or {openid-uri "/openid"
            user-identifier-param "identifier"
-           max-nonce-age 60}
+           max-nonce-age 60
+           login-failure-handler #'workflows/interactive-login-redirect}
       :as openid-config}]
   (let [mgr (doto (ConsumerManager.)
               (.setAssociations (InMemoryConsumerAssociationStore.))
@@ -109,5 +110,4 @@
             (handle-return mgr (merge request {:params params} openid-config))
             
             ;; TODO correct response code?
-            :else (do (println "fail" params)
-                    (ring.util.response/status 500))))))))
+            :else (login-failure-handler request)))))))

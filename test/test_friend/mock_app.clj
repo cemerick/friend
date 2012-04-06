@@ -33,6 +33,7 @@
 
 (defroutes ^{:private true} anon
   (GET "/" request (page-bodies (:uri request)))
+  ;; TODO move openid test into its own ns
   (GET "/test-openid" request (hiccup/html [:html
                                             [:form {:action "/openid" :method "POST"}
                                              "OpenId endpoint: "
@@ -96,10 +97,12 @@
   (->> authorization-config
     (friend/authenticate {:credential-fn (partial creds/bcrypt-credential-fn users)
                           :unauthorized-redirect-uri "/login"
+                          :login-uri "/login"
                           :workflows [(workflows/interactive-form
                                         :login-uri "/login")
                                       (workflows/http-basic
                                         :credential-fn (partial creds/bcrypt-credential-fn api-users)
                                         :realm mock-app-realm)
+                                      ;; TODO move openid test into its own ns
                                       (openid/workflow :credential-fn (comp ring.util.response/response pr-str))]})
     handler/site))

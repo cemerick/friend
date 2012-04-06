@@ -7,12 +7,12 @@
                  [ring/ring-core "1.0.2"]
                  [slingshot "0.10.2"]
                  [robert/hooke "1.1.2"]
-                 
+
                  [org.mindrot/jbcrypt "0.3m"]
-                 
+
                  ;; http-basic
                  [commons-codec "1.6"]
-                 
+
                  ;; openid
                  [org.openid4java/openid4java-consumer "0.9.6" :type "pom"]
                  ; need different httpclient rev for https://issues.apache.org/jira/browse/HTTPCLIENT-1118

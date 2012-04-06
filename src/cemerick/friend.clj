@@ -142,9 +142,10 @@ current authentications from the Ring request."}
 
 (defn authenticate
   [{:keys [retain-auth? allow-anon? unauthorized-redirect-uri unauthorized-handler
-           default-landing-uri credential-fn workflows] :as config
+           default-landing-uri credential-fn workflows login-uri] :as config
     :or {retain-auth? true, allow-anon? true
          default-landing-uri "/"
+         login-uri "/login"
          credential-fn (constantly nil)
          unauthorized-handler #'default-unauthorized-handler}}
    handler]
