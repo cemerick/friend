@@ -48,13 +48,21 @@
     (http/get (url "/auth-api") {:basic-auth "foo:bar"})
     (assert false "this should never succeed")
     (catch [:status 401] {{:strs [www-authenticate]} :headers}
-      (is (= (str "Basic realm=\"" mock-app-realm \"))))))
+      (is (= www-authenticate (str "Basic realm=\"" mock-app-realm \"))))))
 
 (deftest http-basic
   (let [{:keys [body cookies]} (http/get (url "/auth-api") {:basic-auth "api-key:api-pass"
                                                             :as :json})]
     (is (nil? cookies)) ; basic shouldn't provoke session creation
     (is (= {:data 42} body))))
+
+(defn- check-user-role-access
+  "Used to verify hierarchical determination of authorization; both
+   admin and user roles should be able to access these URIs."
+  []
+  (are [uri] (is (= (page-bodies uri) (:body (http/get (url uri)))))
+       "/user/account"
+       "/user/private-page"))
 
 (deftest user-login
   (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
@@ -66,10 +74,20 @@
       ; https://github.com/dakrone/clj-http/issues/57
       (is (http/redirect? resp))
       (is (= "/user/account" (-> resp :headers (get "location")))))
-    (are [uri] (is (= (page-bodies uri) (:body (http/get (url uri)))))
-         "/user/account"
-         "/user/private-page")
-    (is (= {:roles ["user"]} (:body (http/get (url "/echo-roles") {:as :json}))))))
+    (check-user-role-access)
+    (is (= {:roles ["test-friend.mock-app/user"]} (:body (http/get (url "/echo-roles") {:as :json}))))
+    
+    ; deny on admin and api roles
+    (try+
+      (http/get (url "/admin"))
+      (assert false "this should never succeed")
+      (catch [:status 401] _
+        (is true)))
+    (try+
+      (http/get (url "/auth-api"))
+      (assert false "this should never succeed")
+      (catch [:status 401] _
+        (is true)))))
 
 (deftest hooked-authorization
   (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
@@ -89,7 +107,8 @@
     
     (http/post (url "/login") {:form-params {:username "root" :password "admin_password"}})
     (is (= (page-bodies "/admin")) (http/get (url "/admin")))
-    (is (= {:roles ["admin"]} (:body (http/get (url "/echo-roles") {:as :json}))))))
+    (check-user-role-access)
+    (is (= {:roles ["test-friend.mock-app/admin"]} (:body (http/get (url "/echo-roles") {:as :json}))))))
 
 ;;;; TODO
 ; requires-scheme

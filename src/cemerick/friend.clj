@@ -189,15 +189,21 @@ current authentications from the Ring request."}
                     (assoc-in (ring.util.response/redirect unauthorized-redirect-uri)
                               [:session ::unauthorized-uri] (:uri request))))))))))))
 
-(defmacro role-case
+;; TODO
+#_(defmacro role-case
   [])
 
 (defn authorized?
-  "Returns true if at least one role in the :roles in the given authentication map
-   matches one of the roles in the provided set."
+  "Returns the first value in the :roles of the current authentication
+   in the given identity map that isa? one of the required roles.
+   Returns nil otherwise, indicating that the identity is not authorized
+   for the set of required roles."
   [roles identity]
   (let [granted-roles (-> identity current-authentication :roles)]
-    (boolean (seq (set/intersection roles granted-roles)))))
+    (first (for [granted granted-roles
+                 required roles
+                 :when (isa? granted required)]
+             granted))))
 
 (defn throw-unauthorized
   [identity & {:keys [required-roles exprs]}]
@@ -213,8 +219,9 @@ current authentications from the Ring request."}
      (#'throw-unauthorized *identity* :exprs (quote [~@body]))))
 
 (defmacro authorize
-  "Macro that allows the evaluation of the given body of code iff the authenticated
-   user has one of the roles in the provided set.  Otherwise, control will be
+  "Macro that only allows the evaluation of the given body of code if the
+   currently-identified user agent has a role that isa? one of the roles
+   in the provided set.  Otherwise, control will be
    thrown up to the unauthorized-handler configured in the `authenticate`
    middleware.
 
@@ -235,7 +242,7 @@ current authentications from the Ring request."}
 
    e.g.
 
-   (add-hook #'restricted-function (partial #{:admin} authorize-hook))
+   (add-hook #'restricted-function (partial #{::admin} authorize-hook))
 
    Like `authorize`, this depends upon *identity* being bound appropriately."
   ;; that example will result in the hook being applied multiple times if
@@ -252,8 +259,9 @@ current authentications from the Ring request."}
 ;;   (wrap-authorize #{:user} (GET "/account" request ...))
 ;;   (GET "/foo" request ...))
 (defn wrap-authorize
-  "Ring middleware that ensures that the authenticated user has one of the roles
-   in the given set; otherwise, the request will be handled by the
+  "Ring middleware that only passes a request to the given handler if the
+   identity in the request has a role that isa? one of the roles
+   in the provided set.  Otherwise, the request will be handled by the
    unauthorized-handler configured in the `authenticate` middleware."
   [roles handler]
   (fn [request]

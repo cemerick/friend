@@ -16,7 +16,7 @@
                   "/" "Homepage."
                   "/admin" "Admin page."
                   "/user/account" "User account page."
-                  "/user/private-page" "Other :user-private page."
+                  "/user/private-page" "Other ::user-private page."
                   "/hook-admin" "Should be admin only."})
 
 (def mock-app-realm "mock-app-realm")
@@ -48,16 +48,16 @@
   (page-bodies (:uri request)))
 
 (hooke/add-hook #'admin-hook-authorized-fn
-                (partial friend/authorize-hook #{:admin}))
+                (partial friend/authorize-hook #{::admin}))
 
 (def ^{:private true} user-routes
-  (friend/wrap-authorize #{:user}
+  (friend/wrap-authorize #{::user}
     (compojure/routes
       (GET "/account" request (page-bodies (:uri request)))
       (GET "/private-page" request (page-bodies (:uri request))))))
 
 (defroutes ^{:private true} interactive-secured
-  (GET "/admin" request (friend/authorize #{:admin}
+  (GET "/admin" request (friend/authorize #{::admin}
                           (page-bodies (:uri request))))
   (compojure/context "/user" request user-routes)
   (GET "/hook-admin" request (admin-hook-authorized-fn request))
@@ -72,10 +72,12 @@
 
 (def users {"root" {:username "root"
                     :password (creds/hash-bcrypt "admin_password")
-                    :roles #{:admin}}
+                    :roles #{::admin}}
             "jane" {:username "jane"
                     :password (creds/hash-bcrypt "user_password")
-                    :roles #{:user}}})
+                    :roles #{::user}}})
+
+(derive ::admin ::user)
 
 (def api-users {"api-key" {:username "api-key"
                            :password (creds/hash-bcrypt "api-pass")
