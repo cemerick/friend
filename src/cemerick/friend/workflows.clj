@@ -56,7 +56,7 @@
                                       param))))
 
 (defn interactive-form
-  [& {:keys [login-uri credential-fn login-failure-handler]}]
+  [& {:keys [login-uri credential-fn login-failure-handler] :as config}]
   (fn [{:keys [uri request-method params] :as request}]
     (when (and (= login-uri uri)
                (= :post request-method))
@@ -67,5 +67,6 @@
           (with-meta (username-as-identity user-record)
             {::friend/workflow :interactive-form
              :type ::friend/auth})
-          ((or login-failure-handler #'interactive-login-redirect) request))))))
+          ((or login-failure-handler #'interactive-login-redirect)
+            (update-in request [::friend/auth-config] #(merge config %))))))))
 
