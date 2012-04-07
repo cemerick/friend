@@ -17,6 +17,7 @@
                  [org.openid4java/openid4java-consumer "0.9.6" :extension "pom"]
                  ; need different httpclient rev for https://issues.apache.org/jira/browse/HTTPCLIENT-1118
                  [org.apache.httpcomponents/httpclient "4.2-beta1"]]
+  :plugins [[lein-clojars "0.8.0"]]
   :profiles {:dev {:dependencies [[ring-mock "0.1.1"]
                                   [compojure "1.0.1"]
                                   [ring "1.0.2"]
@@ -28,7 +29,8 @@
   :dev-dependencies [[ring-mock "0.1.1"]
                      [compojure "1.0.1"]
                      [ring "1.0.2"]
-                     [clj-http "0.3.6-SNAPSHOT"]])
+                     [clj-http "0.3.6-SNAPSHOT"]
+                     [lein-clojars "0.8.0"]])
 
 ;; see:
 ;; http://static.springsource.org/spring-security/site/docs/3.1.x/reference/springsecurity-single.html#overall-architecture
