@@ -129,7 +129,7 @@ Friend is compatible with Clojure 1.2.0 - 1.4.0.
 ## Usage
 
 There is a fairly ornate Ring application
-[here](test/test_friend/mock_app.clj) that is the basis for Friend's
+[here](friend/blob/master/test/test_friend/mock_app.clj) that is the basis for Friend's
 functional tests that you can look at.  That's likely a little hard to
 navigate though, so a simpler introduction is worthwhile.
 
