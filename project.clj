@@ -20,7 +20,7 @@
   :profiles {:dev {:dependencies [[ring-mock "0.1.1"]
                                   [compojure "1.0.1"]
                                   [ring "1.0.2"]
-                                  [clj-http "0.3.6-SNAPSHOT"]]}
+                                  [clj-http "0.3.6"]]}
              :1.2 {:dependencies [[org.clojure/clojure "1.2.0"]]}
              :1.4 {:dependencies [[org.clojure/clojure "1.4.0-beta5"]]}}
   :aliases  { "all" ["with-profile" "dev,1.2:dev:dev,1.4"] }
