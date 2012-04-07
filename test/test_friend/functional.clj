@@ -11,11 +11,11 @@
   [f]
   (let [server (ring.adapter.jetty/run-jetty #'mock-app {:port 0 :join? false})
         port (-> server .getConnectors first .getLocalPort)]
-    (with-redefs [test-port port]
-      (try
-        (f)
-        (finally
-          (.stop server))))))
+    (def test-port port)  ;; would use with-redefs, but can't test on 1.2
+    (try
+      (f)
+      (finally
+        (.stop server)))))
 
 (use-fixtures :once run-test-app)
 
@@ -46,7 +46,7 @@
 (deftest http-basic-invalid
   (try+
     (http/get (url "/auth-api") {:basic-auth "foo:bar"})
-    (assert false "this should never succeed")
+    (assert false) ; should never get here
     (catch [:status 401] {{:strs [www-authenticate]} :headers}
       (is (= www-authenticate (str "Basic realm=\"" mock-app-realm \"))))))
 
@@ -80,12 +80,12 @@
     ; deny on admin and api roles
     (try+
       (http/get (url "/admin"))
-      (assert false "this should never succeed")
+      (assert false) ; should never get here
       (catch [:status 401] _
         (is true)))
     (try+
       (http/get (url "/auth-api"))
-      (assert false "this should never succeed")
+      (assert false) ; should never get here
       (catch [:status 401] _
         (is true)))))
 
@@ -94,7 +94,7 @@
     (http/post (url "/login") {:form-params {:username "jane" :password "user_password"}})
     (try+
       (http/get (url "/hook-admin"))
-      (assert false "should never get here")
+      (assert false) ; should never get here
       (catch [:status 401] resp
         (is (= "Sorry, you do not have access to this resource." (:body resp)))))
     
