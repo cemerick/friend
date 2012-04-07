@@ -3,7 +3,8 @@
             [cemerick.friend.workflows :as workflows]
             clojure.walk
             ring.util.response)
-  (:use clojure.core.incubator)
+  (:use clojure.core.incubator
+        [cemerick.friend.util :only (gets)])
   (:import (org.openid4java.consumer ConsumerManager VerificationResult
                            InMemoryConsumerAssociationStore
                            InMemoryNonceVerifier)
@@ -40,7 +41,7 @@
                            ax-props))))
 
 (defn- handle-init
-  [^ConsumerManager mgr user-identifier return-to-url openid-config]
+  [^ConsumerManager mgr user-identifier return-to-url]
   (let [discoveries (.discover mgr user-identifier)
         provider-info (.associate mgr discoveries)
         auth-req (request-attribute-exchange
@@ -74,13 +75,13 @@
       (reduce merge (cons {:identity identification} (gather-attr-maps response))))))
 
 (defn- handle-return
-  [^ConsumerManager mgr {:keys [params session login-failure-handler credential-fn] :as req}]
+  [^ConsumerManager mgr {:keys [params session] :as req} openid-config]
   (let [provider-info (:openid-disc session)
         url (#'friend/original-url req)
         plist (ParameterList. params)
         credentials (build-credentials (.verify mgr url plist provider-info))]
-    (or ((workflows/find-credential-fn credential-fn req :openid) credentials)
-        (login-failure-handler req))))
+    (or ((gets :credential-fn openid-config (::friend/auth-config req)) credentials)
+        ((gets :login-failure-handler openid-config (::friend/auth-config req)) req))))
 
 (def ^{:private true} return-key "auth_return")
 
@@ -103,11 +104,10 @@
           (cond
             user-identifier
             (handle-init mgr user-identifier
-              (str (#'friend/original-url request) "?" return-key "=1")
-              openid-config)
+              (str (#'friend/original-url request) "?" return-key "=1"))
             
             (contains? params return-key)
-            (handle-return mgr (merge request {:params params} openid-config))
+            (handle-return mgr (assoc request :params params) openid-config)
             
             ;; TODO correct response code?
             :else (login-failure-handler request)))))))

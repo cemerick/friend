@@ -1,13 +1,8 @@
 (ns cemerick.friend.workflows
   (:require [cemerick.friend :as friend])
-  (:use [clojure.string :only (trim)])
+  (:use [clojure.string :only (trim)]
+        [cemerick.friend.util :only (gets)])
   (:import org.apache.commons.codec.binary.Base64))
-
-(defn find-credential-fn
-  [local-credential-fn request workflow]
-  (or local-credential-fn
-      (-> request ::friend/auth-config :credential-fn)
-      (throw (IllegalArgumentException. (str "No :credential-fn available for " (name workflow))))))
 
 (defn http-basic-deny
   [realm request]
@@ -22,7 +17,7 @@
     (assoc user-record :identity (:username user-record))))
 
 (defn http-basic
-  [& {:keys [credential-fn realm]}]
+  [& {:keys [credential-fn realm] :as basic-config}]
   (fn [{{:strs [authorization]} :headers :as request}]
     (when authorization
       (if-let [[[_ username password]] (try (-> (re-matches #"\s*Basic\s+(.+)" authorization)
@@ -37,7 +32,7 @@
                                            ; TODO should figure out logging for widely-used library; just use tools.logging?
                                            (println "Invalid Authorization header for HTTP Basic auth: " authorization)
                                            (.printStackTrace e)))]
-      (if-let [user-record ((find-credential-fn credential-fn request :http-basic)
+      (if-let [user-record ((gets :credential-fn basic-config (::friend/auth-config request))
                              ^{::friend/workflow :http-basic}
                               {:username username, :password password})]
         (with-meta (username-as-identity user-record)
@@ -56,17 +51,17 @@
                                       param))))
 
 (defn interactive-form
-  [& {:keys [login-uri credential-fn login-failure-handler] :as config}]
+  [& {:keys [login-uri credential-fn login-failure-handler] :as form-config}]
   (fn [{:keys [uri request-method params] :as request}]
     (when (and (= login-uri uri)
                (= :post request-method))
       (let [{:keys [username password] :as creds} (select-keys params [:username :password])]
         (if-let [user-record (and username password
-                                  ((find-credential-fn credential-fn request :interactive-form)
+                                  ((gets :credential-fn form-config (::friend/auth-config request))
                                     (with-meta creds {::friend/workflow :interactive-form})))]
           (with-meta (username-as-identity user-record)
             {::friend/workflow :interactive-form
              :type ::friend/auth})
-          ((or login-failure-handler #'interactive-login-redirect)
-            (update-in request [::friend/auth-config] #(merge config %))))))))
+          ((or (gets :login-failure-handler form-config (::friend/auth-config request)) #'interactive-login-redirect)
+            (update-in request [::friend/auth-config] merge form-config)))))))
 
