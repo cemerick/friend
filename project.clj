@@ -1,4 +1,4 @@
-(defproject com.cemerick/friend "0.0.2-SNAPSHOT"
+(defproject com.cemerick/friend "0.0.2"
   :description "Authentication and authorization library for Ring Clojure web apps and services."
   :url "http://github.com/cemerick/friend"
   :license {:name "Eclipse Public License"
@@ -25,7 +25,7 @@
              :1.2 {:dependencies [[org.clojure/clojure "1.2.0"]]}
              :1.4 {:dependencies [[org.clojure/clojure "1.4.0-beta5"]]}}
   :aliases  { "all" ["with-profile" "dev,1.2:dev:dev,1.4"] }
-  
+
   :dev-dependencies [[ring-mock "0.1.1"]
                      [compojure "1.0.1"]
                      [ring "1.0.2"]
