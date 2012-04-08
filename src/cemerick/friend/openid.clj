@@ -41,11 +41,13 @@
                            ax-props))))
 
 (defn- handle-init
-  [^ConsumerManager mgr user-identifier return-to-url]
+  [^ConsumerManager mgr user-identifier realm return-to-url]
   (let [discoveries (.discover mgr user-identifier)
         provider-info (.associate mgr discoveries)
         auth-req (request-attribute-exchange
-                   (.authenticate mgr provider-info return-to-url))]
+                   (if realm
+                     (.authenticate mgr provider-info return-to-url realm)
+                     (.authenticate mgr provider-info return-to-url)))]
     (assoc (ring.util.response/redirect (.getDestinationUrl auth-req true))
            :session {:openid-disc provider-info})))
 
@@ -87,11 +89,10 @@
 
 (defn workflow
   [& {:keys [openid-uri credential-fn user-identifier-param max-nonce-age
-             login-failure-handler]
+             login-failure-handler realm]
       :or {openid-uri "/openid"
            user-identifier-param "identifier"
-           max-nonce-age 60
-           login-failure-handler #'workflows/interactive-login-redirect}
+           max-nonce-age 60}
       :as openid-config}]
   (let [mgr (doto (ConsumerManager.)
               (.setAssociations (InMemoryConsumerAssociationStore.))
@@ -103,11 +104,15 @@
                                    (get params (name user-identifier-param)))]
           (cond
             user-identifier
-            (handle-init mgr user-identifier
+            (handle-init mgr user-identifier realm
               (str (#'friend/original-url request) "?" return-key "=1"))
             
             (contains? params return-key)
-            (handle-return mgr (assoc request :params params) openid-config)
+            (if-let [auth-map (handle-return mgr (assoc request :params params) openid-config)]
+              (with-meta auth-map {::friend/workflow :openid
+                                   :type ::friend/auth})
+              ((or (gets :login-failure-handler openid-config (::friend/auth-config request)) #'workflows/interactive-login-redirect)
+                (update-in request [::friend/auth-config] merge openid-config)))
             
             ;; TODO correct response code?
             :else (login-failure-handler request)))))))
