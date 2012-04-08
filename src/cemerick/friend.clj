@@ -95,6 +95,10 @@ current authentications from the Ring request."}
   ([identity]
     (-> identity :authentications (get (:current identity)))))
 
+(def ^{:doc "Returns true only if the provided request/response has no identity.
+Equivalent to (complement current-authentication)."}
+      anonymous? (complement current-authentication))
+
 (defn- drop-transient-authentications
   [{:keys [current authentications] :as identity}]
   ;; some workflows shouldn't be retained, or retaining them
