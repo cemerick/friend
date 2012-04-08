@@ -65,7 +65,7 @@
                        (.printStackTrace e)))]
       (when (instance? ext-class ext)  ;; is this ever necessary? yanked from the examples...
         (->> attr-keys 
-          (map #(when-let [v (.getAttributeValue ext %)] [% v]))
+          (map #(when-let [v (.getAttributeValue ext %)] [(keyword %) v]))
           (into ^{:type type} {}))))))
 
 (defn- build-credentials
