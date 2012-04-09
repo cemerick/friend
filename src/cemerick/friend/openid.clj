@@ -40,16 +40,19 @@
                            (FetchRequest/createFetchRequest)
                            ax-props))))
 
+(def ^{:private true} return-key "auth_return")
+
 (defn- handle-init
-  [^ConsumerManager mgr user-identifier realm return-to-url]
+  [^ConsumerManager mgr user-identifier {:keys [session] :as request} realm]
   (let [discoveries (.discover mgr user-identifier)
         provider-info (.associate mgr discoveries)
+        return-url (str (#'friend/original-url request) "?" return-key "=1")
         auth-req (request-attribute-exchange
                    (if realm
-                     (.authenticate mgr provider-info return-to-url realm)
-                     (.authenticate mgr provider-info return-to-url)))]
+                     (.authenticate mgr provider-info return-url realm)
+                     (.authenticate mgr provider-info return-url)))]
     (assoc (ring.util.response/redirect (.getDestinationUrl auth-req true))
-           :session {:openid-disc provider-info})))
+      :session (assoc session ::openid-disc provider-info))))
 
 (defn- gather-attr-maps
   [^Message response]
@@ -78,14 +81,12 @@
 
 (defn- handle-return
   [^ConsumerManager mgr {:keys [params session] :as req} openid-config]
-  (let [provider-info (:openid-disc session)
+  (let [provider-info (::openid-disc session)
         url (#'friend/original-url req)
         plist (ParameterList. params)
         credentials (build-credentials (.verify mgr url plist provider-info))]
     (or ((gets :credential-fn openid-config (::friend/auth-config req)) credentials)
         ((gets :login-failure-handler openid-config (::friend/auth-config req)) req))))
-
-(def ^{:private true} return-key "auth_return")
 
 (defn workflow
   [& {:keys [openid-uri credential-fn user-identifier-param max-nonce-age
@@ -104,8 +105,7 @@
                                    (get params (name user-identifier-param)))]
           (cond
             user-identifier
-            (handle-init mgr user-identifier realm
-              (str (#'friend/original-url request) "?" return-key "=1"))
+            (handle-init mgr user-identifier request (gets :realm openid-config (::friend/auth-config request)))
             
             (contains? params return-key)
             (if-let [auth-map (handle-return mgr (assoc request :params params) openid-config)]

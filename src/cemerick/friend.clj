@@ -158,18 +158,14 @@ Equivalent to (complement current-authentication)."}
           workflow-result (->> (map #(% request) workflows)
                             (filter boolean)
                             first)]
-      ;(binding [*print-meta* true] (println) (prn "workflow" workflow-result))      
       (if (and workflow-result
                (not (auth? workflow-result)))
-        workflow-result                             ;; workflow assumed to be a ring response
+        (preserve-session request workflow-result)  ;; workflow assumed to be a ring response
         (let [new-auth? (auth? workflow-result)
               request (if new-auth?
                         (merge-authentication request workflow-result)
                         request)
               auth (identity request)]
-          #_(binding [*print-meta* true]
-            (prn "session" (:session request))
-            (prn auth))
           (binding [*identity* auth]
             (if (not (or auth allow-anon?))
               (unauthorized-handler request)
