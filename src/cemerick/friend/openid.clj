@@ -79,6 +79,8 @@
     (let [response (.getAuthResponse verification)]
       (reduce merge (cons {:identity identification} (gather-attr-maps response))))))
 
+;; TODO something off in the core abstraction: cannot clear the ::openid-disc session key
+;;    when authentication succeeds here...
 (defn- handle-return
   [^ConsumerManager mgr {:keys [params session] :as req} openid-config]
   (let [provider-info (::openid-disc session)
