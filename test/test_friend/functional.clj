@@ -86,7 +86,12 @@
       (http/get (url "/auth-api"))
       (assert false) ; should never get here
       (catch [:status 401] _
-        (is true)))))
+        (is true)))
+    
+    
+    (testing "logout blocks access to privileged routes"
+      (is (= (page-bodies "/") (:body (http/get (url "/logout")))))
+      (is (= (page-bodies "/login") (:body (http/get (url "/user/account"))))))))
 
 (deftest hooked-authorization
   (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
