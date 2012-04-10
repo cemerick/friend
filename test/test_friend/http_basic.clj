@@ -24,7 +24,6 @@
       (is (= auth {:identity "Aladdin"}))
       (is (= (meta auth) {::friend/workflow :http-basic
                           ::friend/redirect-on-auth? false
-                          ::friend/transient true
                           :type ::friend/auth})))
     
     (is (= {:status 401, :headers {"Content-Type" "text/plain", "WWW-Authenticate" "Basic realm=\"friend-test\""}}

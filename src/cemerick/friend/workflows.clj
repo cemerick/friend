@@ -37,7 +37,6 @@
                               {:username username, :password password})]
         (with-meta (username-as-identity user-record)
           {::friend/workflow :http-basic
-           ::friend/transient true
            ::friend/redirect-on-auth? false
            :type ::friend/auth})
         (http-basic-deny realm request))

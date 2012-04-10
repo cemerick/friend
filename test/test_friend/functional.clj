@@ -51,9 +51,8 @@
       (is (= www-authenticate (str "Basic realm=\"" mock-app-realm \"))))))
 
 (deftest http-basic
-  (let [{:keys [body cookies]} (http/get (url "/auth-api") {:basic-auth "api-key:api-pass"
-                                                            :as :json})]
-    (is (nil? cookies)) ; basic shouldn't provoke session creation
+  (let [{:keys [body]} (http/get (url "/auth-api") {:basic-auth "api-key:api-pass"
+                                                    :as :json})]
     (is (= {:data 42} body))))
 
 (defn- check-user-role-access
