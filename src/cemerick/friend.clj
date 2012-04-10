@@ -51,7 +51,7 @@
 
 (defn- logout*
   [response]
-  (assoc-in response [:session ::identity] {}))
+  (update-in response [:session] dissoc ::identity))
 
 (defn logout
   "Ring middleware that modifies the response to drop all retained authentications."
@@ -99,35 +99,6 @@ current authentications from the Ring request."}
 Equivalent to (complement current-authentication)."}
       anonymous? (complement current-authentication))
 
-(defn- drop-transient-authentications
-  [{:keys [current authentications] :as identity}]
-  ;; some workflows shouldn't be retained, or retaining them
-  ;; serves no purpose (e.g. http basic)
-  (let [authentications (into {} (for [[identity auth :as p] authentications
-                                       :when (not (::transient (meta auth)))]
-                                   p))]
-    (if (get authentications current)
-        (assoc identity :authentications authentications)
-        (assoc identity
-               :authentications authentications
-               :current (first (first authentications))))))
-
-(defn- clear-authentications
-  [response]
-  (let [response (update-in response [:session] dissoc ::identity)]
-    (if (empty? (:session response))
-      (dissoc response :session)
-      response)))
-
-(defn retain-auth
-  [auth retain-auth? response]
-  (if-not retain-auth?
-    (clear-authentications response)
-    (let [identity (drop-transient-authentications (or (identity response) auth))]
-      (if (seq (:authentications identity))
-        (assoc-in response [:session ::identity] auth)
-        (clear-authentications response)))))
-
 ;; ring.util.response/response?, pulled from ring v1.1.0-beta
 (defn- ring-response?
   [resp]
@@ -135,16 +106,30 @@ Equivalent to (complement current-authentication)."}
        (integer? (:status resp))
        (map? (:headers resp))))
 
-(defn- preserve-session
-  [request response]
-  (let [response-map (if (ring-response? response)
-                       response
-                       (response/response response))]
-    (if (:session response-map)
-      response-map
-      (assoc response :session (:session request)))))
+(defn- ring-response
+  [resp]
+  (if (ring-response? resp)
+    resp
+    (response/response resp)))
 
-(defn authenticate
+(defn- clear-identity
+  [response]
+  (if (:session response)
+    (assoc-in response [:session ::identity] nil)
+    response))
+
+(defn- redirect-new-auth
+  [authentication-map request]
+  (when (::redirect-on-auth? (meta authentication-map) true)
+    (let [unauthorized-uri (-> request :session ::unauthorized-uri)
+          resp (response/redirect-after-post (or unauthorized-uri (-> request ::auth-config :default-landing-uri)))]
+      (if unauthorized-uri
+        (-> resp
+          (assoc :session (:session request))
+          (update-in [:session] dissoc ::unauthorized-uri))
+        resp))))
+
+(defn- authenticate*
   [{:keys [retain-auth? allow-anon? unauthorized-redirect-uri unauthorized-handler
            default-landing-uri credential-fn workflows login-uri] :as config
     :or {retain-auth? true, allow-anon? true
@@ -152,15 +137,14 @@ Equivalent to (complement current-authentication)."}
          login-uri "/login"
          credential-fn (constantly nil)
          unauthorized-handler #'default-unauthorized-handler}}
-   handler]
-  (fn [request]
-    (let [request (assoc request ::auth-config config)
+   handler request]
+  (let [request (assoc request ::auth-config config)
           workflow-result (->> (map #(% request) workflows)
                             (filter boolean)
                             first)]
-      (if (and workflow-result
-               (not (auth? workflow-result)))
-        (preserve-session request workflow-result)  ;; workflow assumed to be a ring response
+      (if (and workflow-result (not (auth? workflow-result)))
+        ;; workflow assumed to be a ring response
+        workflow-result
         (let [new-auth? (auth? workflow-result)
               request (if new-auth?
                         (merge-authentication request workflow-result)
@@ -170,24 +154,24 @@ Equivalent to (complement current-authentication)."}
             (if (not (or auth allow-anon?))
               (unauthorized-handler request)
               (try+
-                (let [[response clear-redirect-uri]
-                      (if (and new-auth? (::redirect-on-auth? (meta workflow-result) true))
-                        (-> (or (-> request :session ::unauthorized-uri) default-landing-uri)
-                          response/redirect-after-post
-                          (vector true))
-                        [(handler request) false])]
-                  (retain-auth auth retain-auth? (update-in
-                                                   (preserve-session request response)
-                                                   [:session] dissoc ::unauthorized-uri)))
+                (if new-auth?
+                  (-> (or (redirect-new-auth workflow-result request)
+                          (handler request))
+                    ring-response
+                    (assoc-in [:session ::identity] auth))
+                  (handler request))
                 (catch [:type ::unauthorized] error-map
                   ;; TODO log unauthorized access at trace level
-                  #_(println "unauthorized:" #_(or *identity* (not unauthorized-redirect-uri)) error-map)
-                  #_(println "unauth resp" (assoc-in (ring.util.response/redirect unauthorized-redirect-uri)
-                              [:session ::unauthorized-uri] (:uri request)))
                   (if (or auth (not unauthorized-redirect-uri))
                     (unauthorized-handler request)
-                    (assoc-in (ring.util.response/redirect unauthorized-redirect-uri)
-                              [:session ::unauthorized-uri] (:uri request))))))))))))
+                    (-> (ring.util.response/redirect unauthorized-redirect-uri)
+                      (assoc :session (:session request))
+                      (assoc-in [:session ::unauthorized-uri] (:uri request))))))))))))
+
+(defn authenticate
+  [auth-config ring-handler]
+  ; keeping authenticate* separate is damn handy for debugging hooks, etc.
+  #(authenticate* auth-config ring-handler %))
 
 ;; TODO
 #_(defmacro role-case
@@ -265,7 +249,6 @@ Equivalent to (complement current-authentication)."}
    unauthorized-handler configured in the `authenticate` middleware."
   [roles handler]
   (fn [request]
-    ;(println "wrap" roles (-> request identity current-authentication))
     (if (authorized? roles (identity request))
       (handler request)
       (throw+ {:type ::unauthorized
