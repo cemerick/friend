@@ -31,18 +31,6 @@
   [value]
   (json-response {:data value}))
 
-(defroutes ^{:private true} anon
-  (GET "/" request (page-bodies (:uri request)))
-  ;; TODO move openid test into its own ns
-  (GET "/test-openid" request (hiccup/html [:html
-                                            [:form {:action "/openid" :method "POST"}
-                                             "OpenId endpoint: "
-                                             [:input {:type "text" :name "identifier"}]
-                                             [:input {:type "submit" :name "login"}]]]))
-  (GET "/login" request (page-bodies (:uri request)))
-  (GET "/free-api" request (api-call 99))
-  (friend/logout (ANY "/logout" request (resp/redirect "/"))))
-
 (defn- admin-hook-authorized-fn
   [request]
   (page-bodies (:uri request)))
@@ -54,20 +42,39 @@
   (GET "/account" request (page-bodies (:uri request)))
   (GET "/private-page" request (page-bodies (:uri request))))
 
-(defroutes ^{:private true} interactive-secured
-  (GET "/admin" request (friend/authorize #{::admin}
-                          (page-bodies (:uri request))))
-  (compojure/context "/user" request (friend/wrap-authorize
-                                       #{::user} user-routes))
-  (GET "/hook-admin" request (admin-hook-authorized-fn request))
+(defroutes ^{:private true} mock-app*
+  ;;;;; ANON
+  (GET "/" request (page-bodies (:uri request)))
+  ;; TODO move openid test into its own ns
+  (GET "/test-openid" request (hiccup/html [:html
+                                            [:form {:action "/openid" :method "POST"}
+                                             "OpenId endpoint: "
+                                             [:input {:type "text" :name "identifier"}]
+                                             [:input {:type "submit" :name "login"}]]]))
+  (GET "/login" request (page-bodies (:uri request)))
+  (GET "/free-api" request (api-call 99))
+  (friend/logout (ANY "/logout" request (resp/redirect "/")))
+  
   (GET "/echo-roles" request (friend/authenticated
                                (-> (friend/current-authentication)
                                  (select-keys [:roles])
-                                 json-response))))
-
-(defroutes ^{:private true} private-api
+                                 json-response)))
+  
+  ;;;;; USER
+  (compojure/context "/user" request (friend/wrap-authorize
+                                       #{::user} user-routes))
+  
+  ;;;;; ADMIN
+  (GET "/admin" request (friend/authorize #{::admin}
+                          (page-bodies (:uri request))))
+  (GET "/hook-admin" request (admin-hook-authorized-fn request))
+  
+  ;;;;; API
   (GET "/auth-api" request (friend/authorize #{:api}
-                             (api-call 42))))
+                             (api-call 42)))
+  
+  ;; FIN
+  (route/not-found "404"))
 
 (def users {"root" {:username "root"
                     :password (creds/hash-bcrypt "admin_password")
@@ -88,14 +95,8 @@
     (when (and user (= password (:password user)))
       (assoc user :identity username))))
 
-(defroutes ^{:private true} authorization-config
-  anon
-  interactive-secured
-  private-api
-  (route/not-found "404"))
-
 (def mock-app
-  (->> authorization-config
+  (->> mock-app*
     (friend/authenticate
       {:credential-fn (partial creds/bcrypt-credential-fn users)
        :unauthorized-redirect-uri "/login"

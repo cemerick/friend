@@ -177,18 +177,6 @@ Equivalent to (complement current-authentication)."}
 #_(defmacro role-case
   [])
 
-(defn authorized?
-  "Returns the first value in the :roles of the current authentication
-   in the given identity map that isa? one of the required roles.
-   Returns nil otherwise, indicating that the identity is not authorized
-   for the set of required roles."
-  [roles identity]
-  (let [granted-roles (-> identity current-authentication :roles)]
-    (first (for [granted granted-roles
-                 required roles
-                 :when (isa? granted required)]
-             granted))))
-
 (defn throw-unauthorized
   [identity & {:keys [required-roles exprs]}]
   (throw+ (merge {:type ::unauthorized
@@ -201,6 +189,18 @@ Equivalent to (complement current-authentication)."}
   `(if (current-authentication *identity*)
      ~@body
      (#'throw-unauthorized *identity* :exprs (quote [~@body]))))
+
+(defn authorized?
+  "Returns the first value in the :roles of the current authentication
+   in the given identity map that isa? one of the required roles.
+   Returns nil otherwise, indicating that the identity is not authorized
+   for the set of required roles."
+  [roles identity]
+  (let [granted-roles (-> identity current-authentication :roles)]
+    (first (for [granted granted-roles
+                 required roles
+                 :when (isa? granted required)]
+             granted))))
 
 (defmacro authorize
   "Macro that only allows the evaluation of the given body of code if the
