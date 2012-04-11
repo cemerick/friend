@@ -37,6 +37,13 @@
     (is (http/success? api-resp))
     (is (= {:data 99} (:body api-resp)))))
 
+(deftest ok-404
+  (try+
+    (http/get (url "/wat"))
+    (assert false)
+    (catch [:status 404] {:keys [body]}
+      (is (= "404" body)))))
+
 (deftest login-redirect
   (doseq [[uri url] (urls "/auth-api" "/echo-roles" "/hook-admin"
                     "/user/account" "/user/private-page" "/admin")
@@ -113,6 +120,21 @@
     (is (= (page-bodies "/admin")) (http/get (url "/admin")))
     (check-user-role-access)
     (is (= {:roles ["test-friend.mock-app/admin"]} (:body (http/get (url "/echo-roles") {:as :json}))))))
+
+(deftest logout-only-on-correct-uri
+  ;; logout middleware was previously being applied eagerly
+  (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
+    (is (= (page-bodies "/login") (:body (http/get (url "/admin")))))
+    (http/post (url "/login") {:form-params {:username "root" :password "admin_password"}})
+    
+    (try+
+      (http/get (url "/wat"))
+      (assert false)
+      (catch [:status 404] e))
+    (is (= (page-bodies "/admin")) (http/get (url "/admin")))
+    
+    (is (= (page-bodies "/")) (http/get (url "/logout")))
+    (is (= (page-bodies "/login") (:body (http/get (url "/admin")))))))
 
 ;;;; TODO
 ; requires-scheme

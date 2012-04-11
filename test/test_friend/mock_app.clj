@@ -7,7 +7,8 @@
             [robert.hooke :as hooke]
             [hiccup.core :as hiccup]
             [ring.util.response :as resp]
-            (compojure [handler :as handler]))
+            (compojure [handler :as handler]
+                       [route :as route]))
   (:use [compojure.core :as compojure :only (GET ANY defroutes)]))
 
 
@@ -49,16 +50,15 @@
 (hooke/add-hook #'admin-hook-authorized-fn
                 (partial friend/authorize-hook #{::admin}))
 
-(def ^{:private true} user-routes
-  (friend/wrap-authorize #{::user}
-    (compojure/routes
-      (GET "/account" request (page-bodies (:uri request)))
-      (GET "/private-page" request (page-bodies (:uri request))))))
+(defroutes ^{:private true} user-routes
+  (GET "/account" request (page-bodies (:uri request)))
+  (GET "/private-page" request (page-bodies (:uri request))))
 
 (defroutes ^{:private true} interactive-secured
   (GET "/admin" request (friend/authorize #{::admin}
                           (page-bodies (:uri request))))
-  (compojure/context "/user" request user-routes)
+  (compojure/context "/user" request (friend/wrap-authorize
+                                       #{::user} user-routes))
   (GET "/hook-admin" request (admin-hook-authorized-fn request))
   (GET "/echo-roles" request (friend/authenticated
                                (-> (friend/current-authentication)
@@ -92,7 +92,7 @@
   anon
   interactive-secured
   private-api
-  (ANY "/*" request {:status 404}))
+  (route/not-found "404"))
 
 (def mock-app
   (->> authorization-config
