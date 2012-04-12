@@ -234,19 +234,16 @@ Equivalent to (complement current-authentication)."}
   [roles f & args]
   (authorize roles (apply f args)))
 
-;; Ring middleware for authorization is probably not workable
-;; Routes would need to be arranged very carefully to progress from least to most
-;; restrictive, and hierarchical representation of roles would be a must to avoid
-;; a combinatorial explosion of roles in the set used to configure the middleware
-;; e.g. requests for the anon-safe /foo would result in a 401 here:
-;; (routes
-;;   (wrap-authorize #{:user} (GET "/account" request ...))
-;;   (GET "/foo" request ...))
 (defn wrap-authorize
   "Ring middleware that only passes a request to the given handler if the
    identity in the request has a role that isa? one of the roles
    in the provided set.  Otherwise, the request will be handled by the
-   unauthorized-handler configured in the `authenticate` middleware."
+   unauthorized-handler configured in the `authenticate` middleware.
+
+   Tip: make sure your authorization middleware is applied *within* your routing
+   layer!  Otherwise, authorization failures could occur simply because of the 
+   ordering of your routes, or on 404 requests.  Using something like Compojure's
+   `context` makes such arrangements easy to maintain."
   [roles handler]
   (fn [request]
     (if (authorized? roles (identity request))
