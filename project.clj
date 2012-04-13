@@ -24,9 +24,12 @@
                                   [ring "1.0.2"]
                                   [clj-http "0.3.6"]]
                    :plugins [[lein-clojars "0.8.0"]]}
+             :sanity-check {:aot :all
+                            :compile-path "target/sanity-check-aot"}
              :1.2 {:dependencies [[org.clojure/clojure "1.2.0"]]}
              :1.4 {:dependencies [[org.clojure/clojure "1.4.0-beta5"]]}}
-  :aliases  { "all" ["with-profile" "dev,1.2:dev:dev,1.4"] }
+  :aliases  {"all" ["with-profile" "dev,1.2:dev:dev,1.4"]
+             "sanity-check" ["with-profile" "sanity-check" "compile"]}
 
   :dev-dependencies [[ring-mock "0.1.1"]
                      [compojure "1.0.1"]
