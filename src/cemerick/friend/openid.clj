@@ -111,8 +111,8 @@
             
             (contains? params return-key)
             (if-let [auth-map (handle-return mgr (assoc request :params params) openid-config)]
-              (with-meta auth-map {::friend/workflow :openid
-                                   :type ::friend/auth})
+              (vary-meta auth-map merge {::friend/workflow :openid
+                                         :type ::friend/auth})
               ((or (gets :login-failure-handler openid-config (::friend/auth-config request)) #'workflows/interactive-login-redirect)
                 (update-in request [::friend/auth-config] merge openid-config)))
             

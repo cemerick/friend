@@ -35,7 +35,8 @@
       (if-let [user-record ((gets :credential-fn basic-config (::friend/auth-config request))
                              ^{::friend/workflow :http-basic}
                               {:username username, :password password})]
-        (with-meta (username-as-identity user-record)
+        (vary-meta (username-as-identity user-record)
+          merge
           {::friend/workflow :http-basic
            ::friend/redirect-on-auth? false
            :type ::friend/auth})
@@ -59,7 +60,8 @@
         (if-let [user-record (and username password
                                   ((gets :credential-fn form-config (::friend/auth-config request))
                                     (with-meta creds {::friend/workflow :interactive-form})))]
-          (with-meta (username-as-identity user-record)
+          (vary-meta (username-as-identity user-record)
+            merge
             {::friend/workflow :interactive-form
              :type ::friend/auth
              ::friend/redirect-on-auth? redirect-on-auth?})
