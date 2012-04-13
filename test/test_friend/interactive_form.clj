@@ -15,21 +15,22 @@
                                                                    (= "Aladdin" username))
                                                           {:identity username})))]
     (is (nil? (form-handler (request :get login-uri))))
-    
+
     (is (= {:status 302
             :headers {"Location" "/my_login?&login_failed=Y&username="}
             :body ""}
            (form-handler (request :post login-uri))))
-    
+
     (is (= {:status 302
             :headers {"Location" "/my_login?&login_failed=Y&username=foo"}
             :body ""}
            (form-handler (assoc (request :post login-uri)
                                 :params {:username "foo"}))))
-    
+
     (let [auth (form-handler (assoc (request :post login-uri)
                                     :params {:username "Aladdin"
-                                             :password "open sesame"}))] 
+                                             :password "open sesame"}))]
       (is (= auth {:identity "Aladdin"}))
       (is (= (meta auth) {::friend/workflow :interactive-form
-                          :type ::friend/auth})))))
+                          :type ::friend/auth
+                          ::friend/redirect-on-auth? true})))))
