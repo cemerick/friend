@@ -139,9 +139,9 @@ Equivalent to (complement current-authentication)."}
          unauthorized-handler #'default-unauthorized-handler}}
    handler request]
   (let [request (assoc request ::auth-config config)
-          workflow-result (->> (map #(% request) workflows)
-                            (filter boolean)
-                            first)]
+        workflow-result (->> (map #(% request) workflows)
+                          (filter boolean)
+                          first)]
       (if (and workflow-result (not (auth? workflow-result)))
         ;; workflow assumed to be a ring response
         workflow-result
