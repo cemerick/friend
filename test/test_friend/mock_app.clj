@@ -9,7 +9,8 @@
             [ring.util.response :as resp]
             (compojure [handler :as handler]
                        [route :as route]))
-  (:use [compojure.core :as compojure :only (GET ANY defroutes)]))
+  (:use [compojure.core :as compojure :only (GET ANY defroutes)]
+        [clojure.core.incubator :only (-?>)]))
 
 
 (def page-bodies {"/login" "Login page here."
@@ -73,6 +74,8 @@
   (GET "/auth-api" request (friend/authorize #{:api}
                              (api-call 42)))
   
+  (GET "/view-openid" request (str "OpenId authentication? " (-?> request friend/identity friend/current-authentication pr-str)))
+  
   ;; FIN
   (route/not-found "404"))
 
@@ -101,11 +104,10 @@
       {:credential-fn (partial creds/bcrypt-credential-fn users)
        :unauthorized-redirect-uri "/login"
        :login-uri "/login"
-       :workflows [(workflows/interactive-form
-                     :login-uri "/login")
+       :workflows [(workflows/interactive-form)
                    (workflows/http-basic
                      :credential-fn (partial creds/bcrypt-credential-fn api-users)
                      :realm mock-app-realm)
                    ;; TODO move openid test into its own ns
-                   (openid/workflow :credential-fn (comp ring.util.response/response pr-str))]})
+                   (openid/workflow :credential-fn identity)]})
     handler/site))
