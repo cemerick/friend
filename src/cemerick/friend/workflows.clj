@@ -54,7 +54,7 @@
   [& {:keys [login-uri credential-fn login-failure-handler redirect-on-auth?] :as form-config
       :or {redirect-on-auth? true}}]
   (fn [{:keys [uri request-method params] :as request}]
-    (when (and (= login-uri uri)
+    (when (and (= (gets :login-uri form-config (::friend/auth-config request)) uri)
                (= :post request-method))
       (let [{:keys [username password] :as creds} (select-keys params [:username :password])]
         (if-let [user-record (and username password
