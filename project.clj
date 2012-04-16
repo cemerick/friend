@@ -35,7 +35,7 @@
   :dev-dependencies [[ring-mock "0.1.1"]
                      [compojure "1.0.1"]
                      [ring "1.0.2"]
-                     [clj-http "0.3.6-SNAPSHOT"]
+                     [clj-http "0.3.6"]
                      [lein-clojars "0.8.0"]])
 
 ;; see:
