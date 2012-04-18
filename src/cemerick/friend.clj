@@ -130,14 +130,15 @@ Equivalent to (complement current-authentication)."}
         resp))))
 
 (defn- authenticate*
-  [{:keys [retain-auth? allow-anon? unauthorized-redirect-uri unauthorized-handler
+  [handler
+   {:keys [retain-auth? allow-anon? unauthorized-redirect-uri unauthorized-handler
            default-landing-uri credential-fn workflows login-uri] :as config
     :or {retain-auth? true, allow-anon? true
          default-landing-uri "/"
          login-uri "/login"
          credential-fn (constantly nil)
          unauthorized-handler #'default-unauthorized-handler}}
-   handler request]
+   request]
   (let [request (assoc request ::auth-config config)
         workflow-result (->> (map #(% request) workflows)
                           (filter boolean)
@@ -169,9 +170,9 @@ Equivalent to (complement current-authentication)."}
                       (assoc-in [:session ::unauthorized-uri] (:uri request))))))))))))
 
 (defn authenticate
-  [auth-config ring-handler]
+  [ring-handler auth-config]
   ; keeping authenticate* separate is damn handy for debugging hooks, etc.
-  #(authenticate* auth-config ring-handler %))
+  #(authenticate* ring-handler auth-config %))
 
 ;; TODO
 #_(defmacro role-case
@@ -244,7 +245,7 @@ Equivalent to (complement current-authentication)."}
    layer!  Otherwise, authorization failures could occur simply because of the 
    ordering of your routes, or on 404 requests.  Using something like Compojure's
    `context` makes such arrangements easy to maintain."
-  [roles handler]
+  [handler roles]
   (fn [request]
     (if (authorized? roles (identity request))
       (handler request)

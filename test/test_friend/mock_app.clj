@@ -62,8 +62,7 @@
                                  json-response)))
   
   ;;;;; USER
-  (compojure/context "/user" request (friend/wrap-authorize
-                                       #{::user} user-routes))
+  (compojure/context "/user" request (friend/wrap-authorize user-routes #{::user} ))
   
   ;;;;; ADMIN
   (GET "/admin" request (friend/authorize #{::admin}
@@ -99,7 +98,7 @@
       (assoc user :identity username))))
 
 (def mock-app
-  (->> mock-app*
+  (-> mock-app*
     (friend/authenticate
       {:credential-fn (partial creds/bcrypt-credential-fn users)
        :unauthorized-redirect-uri "/login"

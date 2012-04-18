@@ -157,7 +157,7 @@ Here's probably the most self-contained Friend usage possible:
   )
 
 (def secured-app
-  (->> ring-app
+  (-> ring-app
     (friend/authenticate {:credential-fn (partial creds/bcrypt-credential-fn users)
                           :workflows [(workflows/interactive-form)]})
     ; ...required Ring middlewares ...
@@ -340,8 +340,8 @@ Here's an extension of the example above that adds some actual routes
 
 (defroutes ring-app
   ;; requires user role
-  (compojure/context "/user" request (friend/wrap-authorize
-                                       #{::user} user-routes))
+  (compojure/context "/user" request
+    (friend/wrap-authorize user-routes #{::user}))
 
   ;; requires admin role
   (GET "/admin" request (friend/authorize #{::admin}
