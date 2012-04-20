@@ -179,11 +179,10 @@ Equivalent to (complement current-authentication)."}
   [])
 
 (defn throw-unauthorized
-  [identity & {:keys [required-roles exprs]}]
+  [identity & {:as authorization-info}]
   (throw+ (merge {:type ::unauthorized
-                  ::identity *identity*}
-            (when required-roles {:required-roles required-roles})
-            (when exprs {:exprs exprs}))))
+                  ::identity identity}
+                 authorization-info)))
 
 (defmacro authenticated
   [& body]
@@ -249,7 +248,6 @@ Equivalent to (complement current-authentication)."}
   (fn [request]
     (if (authorized? roles (identity request))
       (handler request)
-      (throw+ {:type ::unauthorized
-               ::identity (identity request)
-               :wrapped-handler handler
-               :roles roles}))))
+      (throw-unauthorized (identity request)
+                          :wrapped-handler handler
+                          :roles roles))))
