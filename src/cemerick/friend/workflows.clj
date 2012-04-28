@@ -16,6 +16,11 @@
     user-record
     (assoc user-record :identity (:username user-record))))
 
+(defn make-auth
+  [user-record auth-meta]
+  (vary-meta (username-as-identity user-record)
+             merge {:type ::friend/auth} auth-meta))
+
 (defn http-basic
   [& {:keys [credential-fn realm] :as basic-config}]
   (fn [{{:strs [authorization]} :headers :as request}]
@@ -35,11 +40,9 @@
       (if-let [user-record ((gets :credential-fn basic-config (::friend/auth-config request))
                              ^{::friend/workflow :http-basic}
                               {:username username, :password password})]
-        (vary-meta (username-as-identity user-record)
-          merge
-          {::friend/workflow :http-basic
-           ::friend/redirect-on-auth? false
-           :type ::friend/auth})
+        (make-auth user-record
+                   {::friend/workflow :http-basic
+                    ::friend/redirect-on-auth? false})
         (http-basic-deny realm request))
       {:status 400 :body "Malformed Authorization header for HTTP Basic authentication."}))))
 
@@ -60,10 +63,8 @@
         (if-let [user-record (and username password
                                   ((gets :credential-fn form-config (::friend/auth-config request))
                                     (with-meta creds {::friend/workflow :interactive-form})))]
-          (vary-meta (username-as-identity user-record)
-            merge
-            {::friend/workflow :interactive-form
-             :type ::friend/auth
-             ::friend/redirect-on-auth? redirect-on-auth?})
+          (make-auth user-record
+                     {::friend/workflow :interactive-form
+                      ::friend/redirect-on-auth? redirect-on-auth?})
           ((or (gets :login-failure-handler form-config (::friend/auth-config request)) #'interactive-login-redirect)
             (update-in request [::friend/auth-config] merge form-config)))))))
