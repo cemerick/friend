@@ -17,9 +17,18 @@
     (assoc user-record :identity (:username user-record))))
 
 (defn make-auth
-  [user-record auth-meta]
-  (vary-meta (username-as-identity user-record)
-             merge {:type ::friend/auth} auth-meta))
+  "Given a user record map (presumably based on data loaded from an
+   application's database), returns an authentication map that:
+
+   * Uses the :identity or :username slot in the user record as
+     the authentication map's :identity
+   * Optionally merges the given auth-meta map into the authentication
+     map's metadata (which by default will contain a single
+     [:type :cemerick.friend/auth] entry"
+  ([user-record] (make-auth user-record {}))
+  ([user-record auth-meta]
+    (vary-meta (username-as-identity user-record)
+               merge {:type ::friend/auth} auth-meta)))
 
 (defn http-basic
   [& {:keys [credential-fn realm] :as basic-config}]
