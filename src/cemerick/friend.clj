@@ -125,7 +125,7 @@ Equivalent to (complement current-authentication)."}
           resp (response/redirect-after-post (or unauthorized-uri (-> request ::auth-config :default-landing-uri)))]
       (if unauthorized-uri
         (-> resp
-          (assoc :session (:session request))
+          (assoc :session (:session authentication-map))
           (update-in [:session] dissoc ::unauthorized-uri))
         resp))))
 
