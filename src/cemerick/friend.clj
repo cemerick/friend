@@ -43,6 +43,26 @@
                                   :scheme scheme
                                   :server-port (scheme-mapping scheme))))))))
 
+(defn requires-scheme-with-proxy
+  "Ring middleware similar to friend/requires-scheme that should be
+  able to handle things like load balancers in Amazon's elastic
+  beanstalk and heroku in addition to other load balancers and reverse
+  proxies that use x-forwarded-proto and thus don't set :scheme in the
+  request map properly. Do not use if your application server is
+  directly facing the internet as these headers are *very* easy to
+  forge."
+  ([handler scheme]
+     (requires-scheme-with-proxy handler scheme *default-scheme-ports*))
+  ([handler scheme scheme-mapping]
+     (fn [request]
+       (if (= (get-in request [:headers "x-forwarded-proto"]) (name scheme))
+         (handler request)
+         (redirect (original-url
+                    (assoc request
+                      :scheme scheme
+                      :server-port (scheme-mapping scheme))))))))
+
+
 (defn merge-authentication
   [m auth]
   (update-in m [:session ::identity]
@@ -241,7 +261,7 @@ Equivalent to (complement current-authentication)."}
    unauthorized-handler configured in the `authenticate` middleware.
 
    Tip: make sure your authorization middleware is applied *within* your routing
-   layer!  Otherwise, authorization failures could occur simply because of the 
+   layer!  Otherwise, authorization failures could occur simply because of the
    ordering of your routes, or on 404 requests.  Using something like Compojure's
    `context` makes such arrangements easy to maintain."
   [handler roles]
