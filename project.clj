@@ -1,4 +1,4 @@
-(defproject com.cemerick/friend "0.0.8"
+(defproject com.cemerick/friend "0.0.9"
   :description "Authentication and authorization library for Ring Clojure web apps and services."
   :url "http://github.com/cemerick/friend"
   :license {:name "Eclipse Public License"
@@ -44,3 +44,6 @@
 ;; oauth
 ; https://github.com/DerGuteMoritz/clj-oauth2 OR
 ; https://github.com/mattrepl/clj-oauth
+
+; https://github.com/fernandezpablo85/scribe-java
+; http://technistas.com/2011/06/28/building-an-oauth-enabled-website-using-java/
