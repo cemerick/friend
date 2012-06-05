@@ -44,10 +44,13 @@
                                   :server-port (scheme-mapping scheme))))))))
 
 (defn merge-authentication
+  "If the workflow has modified the session and passed it in meta, use it.
+  Then update the authentications."
   [m auth]
-  (update-in m [:session ::identity]
-             #(-> (assoc-in % [:authentications (:identity auth)] auth)
-                (assoc :current (:identity auth)))))
+  (let [new-session (or (-> auth meta :session) (:session m))]
+    (assoc m :session (update-in new-session [::identity]
+                              #(-> (assoc-in % [:authentications (:identity auth)] auth)
+                                   (assoc :current (:identity auth)))))))
 
 (defn- logout*
   [response]
