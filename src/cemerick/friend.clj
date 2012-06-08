@@ -69,7 +69,7 @@
              #(-> (assoc-in % [:authentications (:identity auth)] auth)
                 (assoc :current (:identity auth)))))
 
-(defn- logout*
+(defn logout*
   [response]
   (update-in response [:session] dissoc ::identity))
 
