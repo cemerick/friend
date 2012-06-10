@@ -150,16 +150,16 @@ Equivalent to (complement current-authentication)."}
         resp))))
 
 (defn- authenticate*
-  [handler
-   {:keys [retain-auth? allow-anon? unauthorized-redirect-uri unauthorized-handler
-           default-landing-uri credential-fn workflows login-uri] :as config
-    :or {retain-auth? true, allow-anon? true
-         default-landing-uri "/"
-         login-uri "/login"
-         credential-fn (constantly nil)
-         unauthorized-handler #'default-unauthorized-handler}}
-   request]
-  (let [request (assoc request ::auth-config config)
+  [handler config request]
+  (let [default-config {:retain-auth? true, :allow-anon? true
+                        :default-landing-uri "/"
+                        :login-uri "/login"
+                        :credential-fn (constantly nil)
+                        :unauthorized-handler #'default-unauthorized-handler}
+        config (merge default-config config)
+        {:keys [retain-auth? allow-anon? unauthorized-redirect-uri unauthorized-handler
+                default-landing-uri credential-fn workflows login-uri]} config
+        request (assoc request ::auth-config config)
         workflow-result (->> (map #(% request) workflows)
                           (filter boolean)
                           first)]
