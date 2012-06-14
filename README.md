@@ -1,7 +1,7 @@
 # Friend  [![Travis CI status](https://secure.travis-ci.org/cemerick/friend.png)](http://travis-ci.org/#!/cemerick/friend/builds)
 
 An extensible authentication and authorization library for
-[Clojure](http://clojure.org) [Ring](http://github.com/mmcgrana/ring)
+[Clojure](http://clojure.org) [Ring](http://github.com/ring-clojure/ring)
 web applications and services.  
 
 ```
