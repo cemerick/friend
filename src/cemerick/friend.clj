@@ -106,8 +106,8 @@
        :doc "A threadlocal reference to the value of (identity request).
 
 This is fundamentally here only to support `authorize` and its derivatives.
-In general, you should not touch this; use `authentications` to obtain the
-current authentications from the Ring request."}
+In general, you should not touch this; use the `identity` function to
+obtain the current authentications from the Ring request."}
       *identity* nil)
 
 (defn current-authentication
