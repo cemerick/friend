@@ -1,6 +1,6 @@
 language: clojure
 lein: lein2
-script: "lein2 sanity-check, clean, all test"
+script: "lein2 do clean, all test"
 jdk:
   - openjdk7
   - oraclejdk7
