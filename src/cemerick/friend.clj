@@ -149,16 +149,26 @@ Equivalent to (complement current-authentication)."}
           (update-in [:session] dissoc ::unauthorized-uri))
         resp))))
 
+(defn- authorization-failure-stone?
+  [s]
+  (contains? s ::type))
+
+(defn- redirect-unauthorized
+  [redirect-uri request]
+  (-> (ring.util.response/redirect redirect-uri)
+    (assoc :session (:session request))
+    (assoc-in [:session ::unauthorized-uri] (:uri request))))
+
 (defn- authenticate*
   [handler config request]
-  (let [default-config {:retain-auth? true, :allow-anon? true
-                        :default-landing-uri "/"
-                        :login-uri "/login"
-                        :credential-fn (constantly nil)
-                        :unauthorized-handler #'default-unauthorized-handler}
-        config (merge default-config config)
-        {:keys [retain-auth? allow-anon? unauthorized-redirect-uri unauthorized-handler
-                default-landing-uri credential-fn workflows login-uri]} config
+  (let [{:keys [allow-anon? unauthorized-handler workflows login-uri] :as config}
+        (merge {:allow-anon? true
+                :default-landing-uri "/"
+                :login-uri "/login"
+                :credential-fn (constantly nil)
+                :workflows []
+                :unauthorized-handler #'default-unauthorized-handler}
+               config)
         request (assoc request ::auth-config config)
         workflow-result (->> (map #(% request) workflows)
                           (filter boolean)
@@ -172,8 +182,8 @@ Equivalent to (complement current-authentication)."}
                         request)
               auth (identity request)]
           (binding [*identity* auth]
-            (if (not (or auth allow-anon?))
-              (unauthorized-handler request)
+            (if (and (not auth) (not allow-anon?))
+              (redirect-unauthorized login-uri request)
               (try+
                 (if new-auth?
                   (-> (or (redirect-new-auth workflow-result request)
@@ -181,13 +191,13 @@ Equivalent to (complement current-authentication)."}
                     ring-response
                     (assoc-in [:session ::identity] auth))
                   (handler request))
-                (catch [:type ::unauthorized] error-map
+                (catch authorization-failure-stone? error-map
                   ;; TODO log unauthorized access at trace level
-                  (if (or auth (not unauthorized-redirect-uri))
-                    (unauthorized-handler request)
-                    (-> (ring.util.response/redirect unauthorized-redirect-uri)
-                      (assoc :session (:session request))
-                      (assoc-in [:session ::unauthorized-uri] (:uri request))))))))))))
+                  (if auth
+                    (unauthorized-handler (assoc request
+                                                 ::authorization-failure
+                                                 error-map))
+                    (redirect-unauthorized login-uri request))))))))))
 
 (defn authenticate
   [ring-handler auth-config]
@@ -199,16 +209,28 @@ Equivalent to (complement current-authentication)."}
   [])
 
 (defn throw-unauthorized
-  [identity & {:as authorization-info}]
-  (throw+ (merge {:type ::unauthorized
+  [identity authorization-info]
+  (throw+ (merge {::type :unauthorized
                   ::identity identity}
                  authorization-info)))
 
 (defmacro authenticated
+  "Macro that only allows the evaluation of the given body of code if the
+   current user is authenticated. Otherwise, control will be
+   thrown up to the unauthorized-handler configured in the `authenticate`
+   middleware.
+
+   The exception that causes this change in control flow carries a map of
+   data describing the authorization failure; you can optionally provide
+   an auxillary map that is merged to it as the first form of the body
+   of code wrapped by `authenticated`."
   [& body]
-  `(if (current-authentication *identity*)
-     ~@body
-     (#'throw-unauthorized *identity* :exprs (quote [~@body]))))
+  (let [[unauthorized-info body] (if (map? (first body)) body [nil body])]
+    `(if (current-authentication *identity*)
+       ~@body
+       (#'throw-unauthorized *identity* (merge ~unauthorized-info
+                                               {::exprs (quote [~@body])
+                                                ::type :unauthenticated})))))
 
 (defn authorized?
   "Returns the first value in the :roles of the current authentication
@@ -229,15 +251,24 @@ Equivalent to (complement current-authentication)."}
    thrown up to the unauthorized-handler configured in the `authenticate`
    middleware.
 
+   The exception that causes this change in control flow carries a map of
+   data describing the authorization failure; you can optionally provide
+   an auxillary map that is merged to it as the first form of the body
+   of code wrapped by `authorize`.
+
    Note that this macro depends upon the *identity* var being bound to the
    current user's authentications.  This will work fine in e.g. agent sends
    and futures and such, but will fall down in places where binding conveyance
    don't apply (e.g. lazy sequences, direct java.lang.Thread usages, etc)."
   [roles & body]
-  `(let [roles# ~roles]
-     (if (authorized? roles# *identity*)
-       (do ~@body)
-       (throw-unauthorized *identity* :required-roles roles# :exprs (quote [~@body])))))
+  (let [[unauthorized-info & body] (if (map? (first body)) body (cons nil body))]
+    `(let [roles# ~roles]
+       (if (authorized? roles# *identity*)
+         (do ~@body)
+         (throw-unauthorized *identity*
+                             (merge ~unauthorized-info
+                                    {::required-roles roles#
+                                     ::exprs (quote [~@body])}))))))
 
 (defn authorize-hook
   "Authorization function suitable for use as a hook with robert-hooke library.
@@ -269,5 +300,5 @@ Equivalent to (complement current-authentication)."}
     (if (authorized? roles (identity request))
       (handler request)
       (throw-unauthorized (identity request)
-                          :wrapped-handler handler
-                          :roles roles))))
+                          {::wrapped-handler handler
+                           ::required-roles roles}))))

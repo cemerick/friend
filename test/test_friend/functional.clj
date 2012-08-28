@@ -112,6 +112,15 @@
     (http/post (url "/login") {:form-params {:username "root" :password "admin_password"}})
     (is (= (page-bodies "/hook-admin")) (http/get (url "/hook-admin")))))
 
+(deftest authorization-failure-available-to-handler
+  (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
+    (http/post (url "/login") {:form-params {:username "jane" :password "user_password"}})
+    (try+
+      (http/get (url "/incl-auth-failure-data"))
+      (assert false) ; should never get here
+      (catch [:status 403] resp
+        (is (= "403 message thrown with unauthorized stone" (:body resp)))))))
+
 (deftest admin-login
   (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
     (is (= (page-bodies "/login") (:body (http/get (url "/admin")))))

@@ -68,6 +68,9 @@
   (GET "/admin" request (friend/authorize #{::admin}
                           (page-bodies (:uri request))))
   (GET "/hook-admin" request (admin-hook-authorized-fn request))
+  (GET "/incl-auth-failure-data" request (friend/authorize #{::admin}
+                                           {:response-msg "403 message thrown with unauthorized stone"}
+                                           (:uri request)))
   
   ;;;;; API
   (GET "/auth-api" request (friend/authorize #{:api}
@@ -101,8 +104,9 @@
   (-> mock-app*
     (friend/authenticate
       {:credential-fn (partial creds/bcrypt-credential-fn users)
-       :unauthorized-redirect-uri "/login"
-       :login-uri "/login"
+       :unauthorized-handler #(if-let [msg (-> % ::friend/authorization-failure :response-msg)]
+                                {:status 403 :body msg}
+                                (#'friend/default-unauthorized-handler %)) 
        :workflows [(workflows/interactive-form)
                    (workflows/http-basic
                      :credential-fn (partial creds/bcrypt-credential-fn api-users)
