@@ -87,12 +87,12 @@
     (try+
       (http/get (url "/admin"))
       (assert false) ; should never get here
-      (catch [:status 401] _
+      (catch [:status 403] _
         (is true)))
     (try+
       (http/get (url "/auth-api"))
       (assert false) ; should never get here
-      (catch [:status 401] _
+      (catch [:status 403] _
         (is true)))
     
     
@@ -106,7 +106,7 @@
     (try+
       (http/get (url "/hook-admin"))
       (assert false) ; should never get here
-      (catch [:status 401] resp
+      (catch [:status 403] resp
         (is (= "Sorry, you do not have access to this resource." (:body resp)))))
     
     (http/post (url "/login") {:form-params {:username "root" :password "admin_password"}})

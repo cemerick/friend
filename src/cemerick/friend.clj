@@ -81,7 +81,7 @@
 
 (defn- default-unauthorized-handler
   [request]
-  {:status 401
+  {:status 403
    :body "Sorry, you do not have access to this resource."})
 
 (defn identity
