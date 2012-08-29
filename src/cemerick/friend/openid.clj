@@ -79,8 +79,6 @@
     (let [response (.getAuthResponse verification)]
       (reduce merge (cons {:identity identification} (gather-attr-maps response))))))
 
-;; TODO something off in the core abstraction: cannot clear the ::openid-disc session key
-;;    when authentication succeeds here...
 (defn- handle-return
   [^ConsumerManager mgr {:keys [params session] :as req} openid-config]
   (let [provider-info (::openid-disc session)
@@ -100,7 +98,7 @@
   (let [mgr (doto (ConsumerManager.)
               (.setAssociations (InMemoryConsumerAssociationStore.))
               (.setNonceVerifier (InMemoryNonceVerifier. max-nonce-age)))]
-    (fn [{:keys [uri request-method params] :as request}]
+    (fn [{:keys [uri request-method params session] :as request}]
       (when (= uri openid-uri)
         (let [params (clojure.walk/stringify-keys params)
               user-identifier (and (= request-method :post)
@@ -112,6 +110,7 @@
             (contains? params return-key)
             (if-let [auth-map (handle-return mgr (assoc request :params params) openid-config)]
               (vary-meta auth-map merge {::friend/workflow :openid
+                                         :session (dissoc session ::openid-disc)
                                          :type ::friend/auth})
               ((or (gets :login-failure-handler openid-config (::friend/auth-config request)) #'workflows/interactive-login-redirect)
                 (update-in request [::friend/auth-config] merge openid-config)))
