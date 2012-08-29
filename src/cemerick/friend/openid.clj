@@ -2,7 +2,8 @@
   (:require [cemerick.friend :as friend]
             [cemerick.friend.workflows :as workflows]
             clojure.walk
-            ring.util.response)
+            ring.util.response
+            [clojure.core.cache :as cache])
   (:use clojure.core.incubator
         [cemerick.friend.util :only (gets)])
   (:import (org.openid4java.consumer ConsumerManager VerificationResult
@@ -43,16 +44,18 @@
 (def ^{:private true} return-key "auth_return")
 
 (defn- handle-init
-  [^ConsumerManager mgr user-identifier {:keys [session] :as request} realm]
+  [^ConsumerManager mgr discovery-cache user-identifier {:keys [session] :as request} realm]
   (let [discoveries (.discover mgr user-identifier)
         provider-info (.associate mgr discoveries)
         return-url (str (#'friend/original-url request) "?" return-key "=1")
         auth-req (request-attribute-exchange
                    (if realm
                      (.authenticate mgr provider-info return-url realm)
-                     (.authenticate mgr provider-info return-url)))]
+                     (.authenticate mgr provider-info return-url)))
+        discovery-key (str (java.util.UUID/randomUUID))]
+    (swap! discovery-cache assoc discovery-key provider-info)
     (assoc (ring.util.response/redirect (.getDestinationUrl auth-req true))
-      :session (assoc session ::openid-disc provider-info))))
+      :session (assoc session ::openid-disc discovery-key))))
 
 (defn- gather-attr-maps
   [^Message response]
@@ -79,14 +82,15 @@
     (let [response (.getAuthResponse verification)]
       (reduce merge (cons {:identity identification} (gather-attr-maps response))))))
 
-;; TODO something off in the core abstraction: cannot clear the ::openid-disc session key
-;;    when authentication succeeds here...
+;; we end up leaving a string in the user session, but at least it's not an unreadable,
+;; unprintable org.openid4java.discovery.DiscoveryInformation object
 (defn- handle-return
-  [^ConsumerManager mgr {:keys [params session] :as req} openid-config]
-  (let [provider-info (::openid-disc session)
+  [^ConsumerManager mgr discovery-cache {:keys [params session] :as req} openid-config]
+  (let [provider-info (get @discovery-cache (::openid-disc session))
         url (#'friend/original-url req)
         plist (ParameterList. params)
         credentials (build-credentials (.verify mgr url plist provider-info))]
+    (swap! discovery-cache cache/evict (::openid-disc session))
     (or ((gets :credential-fn openid-config (::friend/auth-config req)) credentials)
         ((gets :login-failure-handler openid-config (::friend/auth-config req)) req))))
 
@@ -100,6 +104,7 @@
   (let [mgr (doto (ConsumerManager.)
               (.setAssociations (InMemoryConsumerAssociationStore.))
               (.setNonceVerifier (InMemoryNonceVerifier. (/ max-nonce-age 1000))))
+        discovery-cache (atom (cache/ttl-cache-factory {} :ttl max-nonce-age))]
     (fn [{:keys [uri request-method params] :as request}]
       (when (= uri openid-uri)
         (let [params (clojure.walk/stringify-keys params)
@@ -107,13 +112,16 @@
                                    (get params (name user-identifier-param)))]
           (cond
             user-identifier
-            (handle-init mgr user-identifier request (gets :realm openid-config (::friend/auth-config request)))
+            (handle-init mgr discovery-cache user-identifier request
+                         (gets :realm openid-config (::friend/auth-config request)))
             
             (contains? params return-key)
-            (if-let [auth-map (handle-return mgr (assoc request :params params) openid-config)]
+            (if-let [auth-map (handle-return mgr discovery-cache
+                                             (assoc request :params params) openid-config)]
               (vary-meta auth-map merge {::friend/workflow :openid
                                          :type ::friend/auth})
-              ((or (gets :login-failure-handler openid-config (::friend/auth-config request)) #'workflows/interactive-login-redirect)
+              ((or (gets :login-failure-handler openid-config (::friend/auth-config request))
+                   #'workflows/interactive-login-redirect)
                 (update-in request [::friend/auth-config] merge openid-config)))
             
             ;; TODO correct response code?

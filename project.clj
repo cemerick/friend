@@ -15,6 +15,7 @@
                  [commons-codec "1.6"]
 
                  ;; openid
+                 [org.clojure/core.cache "0.6.2"]
                  [org.openid4java/openid4java-nodeps "0.9.6"]
                  [net.sourceforge.nekohtml/nekohtml "1.9.10"]
                  ; need different httpclient rev for https://issues.apache.org/jira/browse/HTTPCLIENT-1118
