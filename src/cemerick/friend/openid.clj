@@ -95,11 +95,11 @@
              login-failure-handler realm]
       :or {openid-uri "/openid"
            user-identifier-param "identifier"
-           max-nonce-age 60}
+           max-nonce-age 60000}
       :as openid-config}]
   (let [mgr (doto (ConsumerManager.)
               (.setAssociations (InMemoryConsumerAssociationStore.))
-              (.setNonceVerifier (InMemoryNonceVerifier. max-nonce-age)))]
+              (.setNonceVerifier (InMemoryNonceVerifier. (/ max-nonce-age 1000))))
     (fn [{:keys [uri request-method params] :as request}]
       (when (= uri openid-uri)
         (let [params (clojure.walk/stringify-keys params)
