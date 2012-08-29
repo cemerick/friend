@@ -57,6 +57,13 @@
     (catch [:status 401] {{:strs [www-authenticate]} :headers}
       (is (= www-authenticate (str "Basic realm=\"" mock-app-realm \"))))))
 
+(deftest http-basic-missing
+  (try+
+    (http/get (url "/auth-api"))
+    (assert false) ; should never get here
+    (catch [:status 401] {{:strs [www-authenticate]} :headers}
+      (is (= www-authenticate (str "Basic realm=\"" mock-app-realm \"))))))
+
 (deftest http-basic
   (let [{:keys [body]} (http/get (url "/auth-api") {:basic-auth "api-key:api-pass"
                                                     :as :json})]

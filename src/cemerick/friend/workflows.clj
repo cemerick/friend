@@ -33,7 +33,8 @@
 (defn http-basic
   [& {:keys [credential-fn realm] :as basic-config}]
   (fn [{{:strs [authorization]} :headers :as request}]
-    (when authorization
+    (if-not authorization
+      (http-basic-deny realm request)
       (if-let [[[_ username password]] (try (-> (re-matches #"\s*Basic\s+(.+)" authorization)
                                               second
                                               (.getBytes "UTF-8")
@@ -46,14 +47,14 @@
                                            ; TODO should figure out logging for widely-used library; just use tools.logging?
                                            (println "Invalid Authorization header for HTTP Basic auth: " authorization)
                                            (.printStackTrace e)))]
-      (if-let [user-record ((gets :credential-fn basic-config (::friend/auth-config request))
-                             ^{::friend/workflow :http-basic}
-                              {:username username, :password password})]
-        (make-auth user-record
-                   {::friend/workflow :http-basic
-                    ::friend/redirect-on-auth? false})
-        (http-basic-deny realm request))
-      {:status 400 :body "Malformed Authorization header for HTTP Basic authentication."}))))
+        (if-let [user-record ((gets :credential-fn basic-config (::friend/auth-config request))
+                               ^{::friend/workflow :http-basic}
+                                {:username username, :password password})]
+          (make-auth user-record
+                     {::friend/workflow :http-basic
+                      ::friend/redirect-on-auth? false})
+          (http-basic-deny realm request))
+        {:status 400 :body "Malformed Authorization header for HTTP Basic authentication."}))))
 
 (defn interactive-login-redirect
   [{:keys [params] :as request}]
