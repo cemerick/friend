@@ -113,7 +113,7 @@ Friend is available in Clojars. Add this `:dependency` to your Leiningen
 `project.clj`:
 
 ```clojure
-[com.cemerick/friend "0.0.9"]
+[com.cemerick/friend "0.1.0"]
 ```
 
 Or, add this to your Maven project's `pom.xml`:
@@ -127,11 +127,11 @@ Or, add this to your Maven project's `pom.xml`:
 <dependency>
   <groupId>com.cemerick</groupId>
   <artifactId>friend</artifactId>
-  <version>0.0.9</version>
+  <version>0.1.0</version>
 </dependency>
 ```
 
-Friend is compatible with Clojure 1.2.0 - 1.4.0.
+Friend is compatible with Clojure 1.2.0 - 1.4.0+.
 
 ## Usage
 
