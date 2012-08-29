@@ -21,6 +21,8 @@
                  ; need different httpclient rev for https://issues.apache.org/jira/browse/HTTPCLIENT-1118
                  [org.apache.httpcomponents/httpclient "4.2-beta1"]]
   
+  :deploy-repositories {"releases" {:url "https://clojars.org/repo/", :password :gpg}}
+  
   :profiles {:dev {:dependencies [[ring-mock "0.1.1"]
                                   [compojure "1.0.1"]
                                   [ring "1.0.2"]
