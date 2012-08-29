@@ -89,6 +89,10 @@ stuff, etc).
 So, proceed happily, but mindfully.  Only with your help will we have a
 widely-tested Ring application security library.
 
+### Changelog
+
+Available [here](http://github.com/cemerick/friend/blob/master/CHANGES.md).
+
 ### Known issues
 
 * This README is _way_ too long and not well-organized.  It's more of a
