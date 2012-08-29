@@ -34,7 +34,8 @@
   [& {:keys [credential-fn realm] :as basic-config}]
   (fn [{{:strs [authorization]} :headers :as request}]
     (if-not authorization
-      (http-basic-deny realm request)
+      (when-not (-> request ::friend/auth-config :allow-anon?)
+        (http-basic-deny realm request))
       (if-let [[[_ username password]] (try (-> (re-matches #"\s*Basic\s+(.+)" authorization)
                                               second
                                               (.getBytes "UTF-8")

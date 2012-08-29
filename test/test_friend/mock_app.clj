@@ -72,14 +72,16 @@
                                            {:response-msg "403 message thrown with unauthorized stone"}
                                            (:uri request)))
   
-  ;;;;; API
-  (GET "/auth-api" request (friend/authorize #{:api}
-                             (api-call 42)))
-  
-  (GET "/view-openid" request (str "OpenId authentication? " (-?> request friend/identity friend/current-authentication pr-str)))
+  (GET "/view-openid" request
+       (str "OpenId authentication? " (-?> request friend/identity friend/current-authentication pr-str)))
   
   ;; FIN
   (route/not-found "404"))
+
+(defroutes api-routes
+  ;;;;; API
+  (GET "/auth-api" request (friend/authorize #{:api}
+                             (api-call 42))))
 
 (def users {"root" {:username "root"
                     :password (creds/hash-bcrypt "admin_password")
@@ -101,16 +103,22 @@
       (assoc user :identity username))))
 
 (def mock-app
-  (-> mock-app*
+  (handler/site
     (friend/authenticate
+      mock-app*
       {:credential-fn (partial creds/bcrypt-credential-fn users)
        :unauthorized-handler #(if-let [msg (-> % ::friend/authorization-failure :response-msg)]
                                 {:status 403 :body msg}
                                 (#'friend/default-unauthorized-handler %)) 
        :workflows [(workflows/interactive-form)
-                   (workflows/http-basic
-                     :credential-fn (partial creds/bcrypt-credential-fn api-users)
-                     :realm mock-app-realm)
                    ;; TODO move openid test into its own ns
-                   (openid/workflow :credential-fn identity)]})
-    handler/site))
+                   (openid/workflow :credential-fn identity)]})))
+
+(def api-app
+  (handler/api
+    (friend/authenticate
+      api-routes
+      {:allow-anon? false
+       :workflows [(workflows/http-basic
+                     :credential-fn (partial creds/bcrypt-credential-fn api-users)
+                     :realm mock-app-realm)]})))

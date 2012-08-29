@@ -7,9 +7,9 @@
 
 (declare test-port)
 
-(defn- run-test-app
-  [f]
-  (let [server (ring.adapter.jetty/run-jetty #'mock-app {:port 0 :join? false})
+(defn run-test-app
+  [app f]
+  (let [server (ring.adapter.jetty/run-jetty app {:port 0 :join? false})
         port (-> server .getConnectors first .getLocalPort)]
     (def test-port port)  ;; would use with-redefs, but can't test on 1.2
     (try
@@ -17,7 +17,7 @@
       (finally
         (.stop server)))))
 
-(use-fixtures :once run-test-app)
+(use-fixtures :once (partial run-test-app #'mock-app))
 
 (defn url
   [uri]
@@ -45,29 +45,10 @@
       (is (= "404" body)))))
 
 (deftest login-redirect
-  (doseq [[uri url] (urls "/auth-api" "/echo-roles" "/hook-admin"
+  (doseq [[uri url] (urls "/echo-roles" "/hook-admin"
                     "/user/account" "/user/private-page" "/admin")
           :let [resp (http/get url)]]
     (is (= (page-bodies "/login") (:body resp)) uri)))
-
-(deftest http-basic-invalid
-  (try+
-    (http/get (url "/auth-api") {:basic-auth "foo:bar"})
-    (assert false) ; should never get here
-    (catch [:status 401] {{:strs [www-authenticate]} :headers}
-      (is (= www-authenticate (str "Basic realm=\"" mock-app-realm \"))))))
-
-(deftest http-basic-missing
-  (try+
-    (http/get (url "/auth-api"))
-    (assert false) ; should never get here
-    (catch [:status 401] {{:strs [www-authenticate]} :headers}
-      (is (= www-authenticate (str "Basic realm=\"" mock-app-realm \"))))))
-
-(deftest http-basic
-  (let [{:keys [body]} (http/get (url "/auth-api") {:basic-auth "api-key:api-pass"
-                                                    :as :json})]
-    (is (= {:data 42} body))))
 
 (defn- check-user-role-access
   "Used to verify hierarchical determination of authorization; both
@@ -90,18 +71,12 @@
     (check-user-role-access)
     (is (= {:roles ["test-friend.mock-app/user"]} (:body (http/get (url "/echo-roles") {:as :json}))))
     
-    ; deny on admin and api roles
+    ; deny on admin role
     (try+
       (http/get (url "/admin"))
       (assert false) ; should never get here
       (catch [:status 403] _
         (is true)))
-    (try+
-      (http/get (url "/auth-api"))
-      (assert false) ; should never get here
-      (catch [:status 403] _
-        (is true)))
-    
     
     (testing "logout blocks access to privileged routes"
       (is (= (page-bodies "/") (:body (http/get (url "/logout")))))
