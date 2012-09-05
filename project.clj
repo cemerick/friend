@@ -3,7 +3,8 @@
   :url "http://github.com/cemerick/friend"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.3.0"]
+  :min-lein-version "2.0.0"
+  :dependencies [[org.clojure/clojure "1.4.0"]
                  [ring/ring-core "1.0.2"]
                  [slingshot "0.10.2"]
                  [robert/hooke "1.1.2"]
@@ -21,7 +22,8 @@
                  ; need different httpclient rev for https://issues.apache.org/jira/browse/HTTPCLIENT-1118
                  [org.apache.httpcomponents/httpclient "4.2-beta1"]]
   
-  :deploy-repositories {"releases" {:url "https://clojars.org/repo/", :password :gpg}}
+  :deploy-repositories {"releases" {:url "https://clojars.org/repo/" :creds :gpg}
+                        "snapshots" {:url "https://clojars.org/repo/" :creds :gpg}}
   
   :profiles {:dev {:dependencies [[ring-mock "0.1.1"]
                                   [compojure "1.0.1"]
@@ -30,15 +32,15 @@
              :sanity-check {:aot :all
                             :compile-path "target/sanity-check-aot"}
              :1.2 {:dependencies [[org.clojure/clojure "1.2.0"]]}
-             :1.4 {:dependencies [[org.clojure/clojure "1.4.0-beta5"]]}}
-  :aliases  {"all" ["with-profile" "dev,1.2:dev:dev,1.4"]
+             :1.3 {:dependencies [[org.clojure/clojure "1.3.0"]]}
+             :1.5 {:dependencies [[org.clojure/clojure "1.5.0-alpha4"]]}}
+  :aliases  {"all" ["with-profile" "dev,1.2:dev,1.3:dev:dev,1.5"]
              "sanity-check" ["with-profile" "sanity-check" "compile"]}
 
   :dev-dependencies [[ring-mock "0.1.1"]
                      [compojure "1.0.1"]
                      [ring "1.0.2"]
-                     [clj-http "0.3.6"]
-                     [lein-clojars "0.8.0"]])
+                     [clj-http "0.3.6"]])
 
 ;; see:
 ;; http://static.springsource.org/spring-security/site/docs/3.1.x/reference/springsecurity-single.html#overall-architecture
