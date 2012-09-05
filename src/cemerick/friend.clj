@@ -140,9 +140,12 @@ Equivalent to (complement current-authentication)."}
 
 (defn- redirect-new-auth
   [authentication-map request]
-  (when (::redirect-on-auth? (meta authentication-map) true)
+  (when-let [redirect (::redirect-on-auth? (meta authentication-map) true)]
     (let [unauthorized-uri (-> request :session ::unauthorized-uri)
-          resp (response/redirect-after-post (or unauthorized-uri (-> request ::auth-config :default-landing-uri)))]
+          resp (response/redirect-after-post
+                 (or unauthorized-uri
+                     (and (string? redirect) redirect)
+                     (-> request ::auth-config :default-landing-uri)))]
       (if unauthorized-uri
         (-> resp
           (assoc :session (:session request))
