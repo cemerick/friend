@@ -152,10 +152,6 @@ Equivalent to (complement current-authentication)."}
           (update-in [:session] dissoc ::unauthorized-uri))
         resp))))
 
-(defn- authorization-failure-stone?
-  [s]
-  (contains? s ::type))
-
 (defn- redirect-unauthorized
   [redirect-uri request]
   (-> (ring.util.response/redirect redirect-uri)
@@ -194,7 +190,7 @@ Equivalent to (complement current-authentication)."}
                     ring-response
                     (assoc-in [:session ::identity] auth))
                   (handler request))
-                (catch authorization-failure-stone? error-map
+                (catch ::type error-map
                   ;; TODO log unauthorized access at trace level
                   (if auth
                     (unauthorized-handler (assoc request
