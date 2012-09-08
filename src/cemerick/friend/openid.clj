@@ -13,10 +13,6 @@
            (org.openid4java.message.ax AxMessage FetchRequest FetchResponse)
            (org.openid4java.message.sreg SRegMessage SRegRequest SRegResponse)))
 
-(def ^{:private true} common-identifiers
-  {"yahoo" "https://me.yahoo.com"
-   "google" "https://www.google.com/accounts/o8/id"})
-
 (def ^{:private true} ax-props
   {"country" "http://axschema.org/contact/country/home"
    "email"	"http://axschema.org/contact/email"  ;"http://schema.openid.net/contact/email".
