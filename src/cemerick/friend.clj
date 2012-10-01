@@ -188,6 +188,7 @@ Equivalent to (complement current-authentication)."}
                   (-> (or (redirect-new-auth workflow-result request)
                           (handler request))
                     ring-response
+                    (assoc :session (:session request))
                     (assoc-in [:session ::identity] auth))
                   (handler request))
                 (catch ::type error-map
