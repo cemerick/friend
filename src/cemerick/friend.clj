@@ -1,5 +1,6 @@
 (ns cemerick.friend
-  (:require [clojure.set :as set])
+  (:require [clojure.set :as set]
+            [clojure.core.incubator :refer (-?>)])
   (:use (ring.util [response :as response :only (redirect)])
         [slingshot.slingshot :only (throw+ try+)])
   (:refer-clojure :exclude (identity)))
@@ -74,10 +75,11 @@
   (update-in response [:session] dissoc ::identity))
 
 (defn logout
-  "Ring middleware that modifies the response to drop all retained authentications."
+  "Ring middleware that modifies the response to drop all retained
+authentications."
   [handler]
   #(when-let [response (handler %)]
-     (logout* response)))
+     (logout* (assoc response :session (:session %)))))
 
 (defn- default-unauthorized-handler
   [request]
@@ -131,6 +133,13 @@ Equivalent to (complement current-authentication)."}
     (assoc-in response [:session ::identity] nil)
     response))
 
+(defn- ensure-identity
+  [response request]
+  (if-let [identity (identity request)]
+    (assoc response :session (assoc (or (:session response) (:session request))
+                                    ::identity identity))
+    response))
+
 (defn- redirect-new-auth
   [authentication-map request]
   (when-let [redirect (::redirect-on-auth? (meta authentication-map) true)]
@@ -179,13 +188,9 @@ Equivalent to (complement current-authentication)."}
               (try+
                 (if-not new-auth?
                   (handler request)
-                  (let [resp (ring-response
-                               (or (redirect-new-auth workflow-result request)
-                                   (handler request)))
-                        resp (if (contains? resp :session)
-                               resp
-                               (assoc resp :session (:session request)))]
-                    (assoc-in resp [:session ::identity] auth)))
+                  (-?> (or (redirect-new-auth workflow-result request)
+                           (handler request))
+                    (ensure-identity request)))
                 (catch ::type error-map
                   ;; TODO log unauthorized access at trace level
                   (if auth

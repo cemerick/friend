@@ -68,7 +68,8 @@
         (let [value (-> request :params :value)]
           (-> value 
             resp/response 
-            (assoc :session {:session-value value}))))
+            (assoc :session (assoc (:session request)
+                                   :session-value value)))))
   
   ;;;;; USER
   (compojure/context "/user" request (friend/wrap-authorize user-routes #{::user} ))
@@ -112,16 +113,16 @@
       (assoc user :identity username))))
 
 (def mock-app
-  (handler/site
+  (-> mock-app*
     (friend/authenticate
-      mock-app*
       {:credential-fn (partial creds/bcrypt-credential-fn users)
        :unauthorized-handler #(if-let [msg (-> % ::friend/authorization-failure :response-msg)]
                                 {:status 403 :body msg}
                                 (#'friend/default-unauthorized-handler %)) 
        :workflows [(workflows/interactive-form)
                    ;; TODO move openid test into its own ns
-                   (openid/workflow :credential-fn identity)]})))
+                   (openid/workflow :credential-fn identity)]})
+    handler/site))
 
 (def api-app
   (handler/api

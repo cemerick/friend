@@ -83,7 +83,8 @@
       (is (= (page-bodies "/login") (:body (http/get (url "/user/account"))))))))
 
 (deftest session-integrity
-  (testing "that session data set elsewhere is not disturbed by friend's operation"
+  (testing (str "that session state set elsewhere is not disturbed by friend's operation, "
+                "and that maintaining the friend identity doesn't disturb session state")
     (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
       (let [post-session-data #(:body (http/post (url "/session-value")
                                                  {:form-params {:value %}}))
@@ -96,13 +97,15 @@
         (is (= "session-data" (get-session-data)))
         (is (= "auth-data" (post-session-data "auth-data")))
         (is (= "auth-data" (get-session-data)))
+        (check-user-role-access)
         
         (http/get (url "/logout"))
         (let [should-be-login-redirect (http/get (url "/user/account")
                                                  {:follow-redirects false})]
           (is (= 302 (:status should-be-login-redirect)))
           (is (= "/login" (-> should-be-login-redirect :headers (get "location")))))
-        (is (= "" (get-session-data)))))))
+        ; TODO should logout blow away the session completely?
+        (is (= "auth-data" (get-session-data)))))))
 
 (deftest hooked-authorization
   (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
