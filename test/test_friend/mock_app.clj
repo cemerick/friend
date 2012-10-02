@@ -9,7 +9,7 @@
             [ring.util.response :as resp]
             (compojure [handler :as handler]
                        [route :as route]))
-  (:use [compojure.core :as compojure :only (GET ANY defroutes)]
+  (:use [compojure.core :as compojure :only (GET POST ANY defroutes)]
         [clojure.core.incubator :only (-?>)]))
 
 
@@ -60,6 +60,15 @@
                                (-> (friend/current-authentication)
                                  (select-keys [:roles])
                                  json-response)))
+  
+  ;;;;; session integrity
+  (GET "/session-value" request
+       (-> request :session :session-value resp/response))
+  (POST "/session-value" request
+        (let [value (-> request :params :value)]
+          (-> value 
+            resp/response 
+            (assoc :session {:session-value value}))))
   
   ;;;;; USER
   (compojure/context "/user" request (friend/wrap-authorize user-routes #{::user} ))

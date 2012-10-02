@@ -82,6 +82,28 @@
       (is (= (page-bodies "/") (:body (http/get (url "/logout")))))
       (is (= (page-bodies "/login") (:body (http/get (url "/user/account"))))))))
 
+(deftest session-integrity
+  (testing "that session data set elsewhere is not disturbed by friend's operation"
+    (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
+      (let [post-session-data #(:body (http/post (url "/session-value")
+                                                 {:form-params {:value %}}))
+            get-session-data #(:body (http/get (url "/session-value")))]
+        (is (= "session-data" (post-session-data "session-data")))
+        (is (= "session-data" (get-session-data)))
+        (http/post (url "/login")
+                   {:form-params {:username "jane" :password "user_password"}})
+        (check-user-role-access)
+        (is (= "session-data" (get-session-data)))
+        (is (= "auth-data" (post-session-data "auth-data")))
+        (is (= "auth-data" (get-session-data)))
+        
+        (http/get (url "/logout"))
+        (let [should-be-login-redirect (http/get (url "/user/account")
+                                                 {:follow-redirects false})]
+          (is (= 302 (:status should-be-login-redirect)))
+          (is (= "/login" (-> should-be-login-redirect :headers (get "location")))))
+        (is (= "" (get-session-data)))))))
+
 (deftest hooked-authorization
   (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
     (http/post (url "/login") {:form-params {:username "jane" :password "user_password"}})
