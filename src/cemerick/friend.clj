@@ -1,8 +1,8 @@
 (ns cemerick.friend
-  (:require [clojure.set :as set]
-            [clojure.core.incubator :refer (-?>)])
+  (:require [clojure.set :as set])
   (:use (ring.util [response :as response :only (redirect)])
-        [slingshot.slingshot :only (throw+ try+)])
+        [slingshot.slingshot :only (throw+ try+)]
+        [clojure.core.incubator :only (-?>)])
   (:refer-clojure :exclude (identity)))
 
 (defn- original-url

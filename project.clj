@@ -8,7 +8,7 @@
                  [ring/ring-core "1.1.0"]
                  [slingshot "0.10.2"]
                  [robert/hooke "1.1.2"]
-                 [org.clojure/core.incubator "0.1.0"]
+                 [org.clojure/core.incubator "0.1.1"]
 
                  [org.mindrot/jbcrypt "0.3m"]
 
