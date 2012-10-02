@@ -184,13 +184,15 @@ Equivalent to (complement current-authentication)."}
             (if (and (not auth) (not allow-anon?))
               (redirect-unauthorized login-uri request)
               (try+
-                (if new-auth?
-                  (-> (or (redirect-new-auth workflow-result request)
-                          (handler request))
-                    ring-response
-                    (assoc :session (:session request))
-                    (assoc-in [:session ::identity] auth))
-                  (handler request))
+                (if-not new-auth?
+                  (handler request)
+                  (let [resp (ring-response
+                               (or (redirect-new-auth workflow-result request)
+                                   (handler request)))
+                        resp (if (contains? resp :session)
+                               resp
+                               (assoc resp :session (:session request)))]
+                    (assoc-in resp [:session ::identity] auth)))
                 (catch ::type error-map
                   ;; TODO log unauthorized access at trace level
                   (if auth
