@@ -119,16 +119,9 @@ obtain the current authentications from the Ring request."}
 Equivalent to (complement current-authentication)."}
       anonymous? (complement current-authentication))
 
-;; ring.util.response/response?, pulled from ring v1.1.0-beta
-(defn- ring-response?
-  [resp]
-  (and (map? resp)
-       (integer? (:status resp))
-       (map? (:headers resp))))
-
 (defn- ring-response
   [resp]
-  (if (ring-response? resp)
+  (if (response/response? resp)
     resp
     (response/response resp)))
 
