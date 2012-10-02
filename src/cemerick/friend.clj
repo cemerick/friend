@@ -133,12 +133,6 @@ Equivalent to (complement current-authentication)."}
     resp
     (response/response resp)))
 
-(defn- clear-identity
-  [response]
-  (if (:session response)
-    (assoc-in response [:session ::identity] nil)
-    response))
-
 (defn- ensure-identity
   [response request]
   (if-let [identity (identity request)]
