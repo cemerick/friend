@@ -1,4 +1,4 @@
-(defproject com.cemerick/friend "0.1.1-SNAPSHOT"
+(defproject com.cemerick/friend "0.1.1"
   :description "Authentication and authorization library for Ring Clojure web apps and services."
   :url "http://github.com/cemerick/friend"
   :license {:name "Eclipse Public License"
@@ -20,7 +20,7 @@
                  [org.openid4java/openid4java-nodeps "0.9.6"]
                  [net.sourceforge.nekohtml/nekohtml "1.9.10"]
                  ; need different httpclient rev for https://issues.apache.org/jira/browse/HTTPCLIENT-1118
-                 [org.apache.httpcomponents/httpclient "4.2-beta1"]]
+                 [org.apache.httpcomponents/httpclient "4.2.1"]]
   
   :deploy-repositories {"releases" {:url "https://clojars.org/repo/" :creds :gpg}
                         "snapshots" {:url "https://clojars.org/repo/" :creds :gpg}}
