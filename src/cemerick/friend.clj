@@ -71,6 +71,10 @@
                 (assoc :current (:identity auth)))))
 
 (defn logout*
+  "Removes any Friend identity from the response's :session.
+Assumes that the request's :session has already been added to the
+response (doing otherwise will likely result in the Friend identity
+being added back into the final response)."
   [response]
   (update-in response [:session] dissoc ::identity))
 
@@ -79,7 +83,9 @@
 authentications."
   [handler]
   #(when-let [response (handler %)]
-     (logout* (assoc response :session (:session %)))))
+     (->> (or (:session response) (:session %))
+       (assoc response :session)
+       logout*)))
 
 (defn- default-unauthorized-handler
   [request]
