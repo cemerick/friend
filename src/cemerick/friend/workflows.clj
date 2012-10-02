@@ -41,7 +41,7 @@
                                               (.getBytes "UTF-8")
                                               Base64/decodeBase64
                                               (String. "UTF-8")
-                                              (#(re-seq #"([^:]+):(.*)" %)))
+                                              (#(re-seq #"([^:]*):(.*)" %)))
                                          (catch Exception e
                                            ; could let this bubble up and have an error page take over,
                                            ;   but basic is going to be used predominantly for API usage, so...
