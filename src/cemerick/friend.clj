@@ -227,7 +227,7 @@ Equivalent to (complement current-authentication)."}
   [& body]
   (let [[unauthorized-info body] (if (map? (first body)) body [nil body])]
     `(if (current-authentication *identity*)
-       ~@body
+       (do ~@body)
        (#'throw-unauthorized *identity* (merge ~unauthorized-info
                                                {::exprs (quote [~@body])
                                                 ::type :unauthenticated})))))
