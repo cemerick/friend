@@ -92,14 +92,15 @@
 
 (defn workflow
   [& {:keys [openid-uri credential-fn user-identifier-param max-nonce-age
-             login-failure-handler realm]
+             login-failure-handler realm consumer-manager]
       :or {openid-uri "/openid"
            user-identifier-param "identifier"
            max-nonce-age 60000}
       :as openid-config}]
-  (let [mgr (doto (ConsumerManager.)
-              (.setAssociations (InMemoryConsumerAssociationStore.))
-              (.setNonceVerifier (InMemoryNonceVerifier. (/ max-nonce-age 1000))))
+  (let [mgr (or consumer-manager
+                (doto (ConsumerManager.)
+                  (.setAssociations (InMemoryConsumerAssociationStore.))
+                  (.setNonceVerifier (InMemoryNonceVerifier. (/ max-nonce-age 1000)))))
         discovery-cache (atom (cache/ttl-cache-factory {} :ttl max-nonce-age))]
     (fn [{:keys [uri request-method params] :as request}]
       (when (= uri openid-uri)
