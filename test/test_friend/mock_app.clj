@@ -106,12 +106,6 @@
                            :password (creds/hash-bcrypt "api-pass")
                            :roles #{:api}}})
 
-(defn- credential-fn
-  [users {:keys [username password]}]
-  (let [user (users username)]
-    (when (and user (= password (:password user)))
-      (assoc user :identity username))))
-
 (def mock-app
   (-> mock-app*
     (friend/authenticate
