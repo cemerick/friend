@@ -11,6 +11,12 @@
                             (BCrypt/gensalt work-factor)
                             (BCrypt/gensalt))))
 
+(defn bcrypt-verify
+  "Returns true if the plaintext [password] corresponds to [hash],
+the result of previously hashing that password."
+  [password hash]
+  (BCrypt/checkpw password hash))
+
 (defn bcrypt-credential-fn
   "A bcrypt credentials function intended to be used with `cemerick.friend/authenticate`
    or individual authentication workflows.  You must supply a function of one argument
@@ -38,5 +44,5 @@
   [load-credentials-fn {:keys [username password]}]
   (when-let [creds (load-credentials-fn username)]
     (let [password-key (or (-> creds meta ::password-key) :password)]
-      (when (BCrypt/checkpw password (get creds password-key))
+      (when (bcrypt-verify password (get creds password-key))
         (dissoc creds password-key)))))
