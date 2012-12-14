@@ -115,13 +115,22 @@ authentications."
 
 This is fundamentally here only to support `authorize` and its derivatives.
 In general, you should not touch this; use the `identity` function to
-obtain the current authentications from the Ring request."}
+obtain the identity associated with a Ring request, or e.g.
+`(current-authentication request)` to obtain the current authentication
+from a Ring request or response."}
       *identity* nil)
 
 (defn current-authentication
+  "Returns the authentication associated with either the current in-flight
+request, or the provided Ring request or response map.
+
+Providing the Ring request map explicitly is strongly encouraged, to avoid
+any funny-business related to the dynamic binding of `*identity*`."
   ([] (current-authentication *identity*))
-  ([identity]
-    (-> identity :authentications (get (:current identity)))))
+  ([identity-or-ring-map]
+    (let [identity (or (identity identity-or-ring-map)
+                     identity-or-ring-map)]
+      (-> identity :authentications (get (:current identity))))))
 
 (def ^{:doc "Returns true only if the provided request/response has no identity.
 Equivalent to (complement current-authentication)."}

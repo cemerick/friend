@@ -57,7 +57,7 @@
   (friend/logout (ANY "/logout" request (resp/redirect "/")))
   
   (GET "/echo-roles" request (friend/authenticated
-                               (-> (friend/current-authentication)
+                               (-> (friend/current-authentication request)
                                  (select-keys [:roles])
                                  json-response)))
   
