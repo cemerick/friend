@@ -60,7 +60,7 @@
 (defn interactive-login-redirect
   [{:keys [params] :as request}]
   (ring.util.response/redirect (let [param (str "&login_failed=Y&username=" (java.net.URLEncoder/encode
-                                                                              (:username params)))
+                                                                              (:username params "")))
                                      login-uri (-> request ::friend/auth-config :login-uri)]
                                  (str (if (.contains login-uri "?") login-uri (str login-uri "?"))
                                       param))))
