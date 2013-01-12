@@ -1,6 +1,7 @@
 (ns cemerick.friend.openid
   (:require [cemerick.friend :as friend]
             [cemerick.friend.workflows :as workflows]
+            [cemerick.friend.util :as util]
             clojure.walk
             ring.util.response
             [clojure.core.cache :as cache])
@@ -43,7 +44,7 @@
   [^ConsumerManager mgr discovery-cache user-identifier {:keys [session] :as request} realm]
   (let [discoveries (.discover mgr user-identifier)
         provider-info (.associate mgr discoveries)
-        return-url (str (#'friend/original-url request) "?" return-key "=1")
+        return-url (str (util/original-url request) "?" return-key "=1")
         auth-req (request-attribute-exchange
                    (if realm
                      (.authenticate mgr provider-info return-url realm)
@@ -83,7 +84,7 @@
 (defn- handle-return
   [^ConsumerManager mgr discovery-cache {:keys [params session] :as req} openid-config]
   (let [provider-info (get @discovery-cache (::openid-disc session))
-        url (#'friend/original-url req)
+        url (util/original-url req)
         plist (ParameterList. params)
         credentials (build-credentials (.verify mgr url plist provider-info))]
     (swap! discovery-cache cache/evict (::openid-disc session))
@@ -122,4 +123,5 @@
                 (update-in request [::friend/auth-config] merge openid-config)))
             
             ;; TODO correct response code?
-            :else (login-failure-handler request)))))))
+            :else ((gets :login-failure-handler openid-config (::friend/auth-config request))
+                    request)))))))

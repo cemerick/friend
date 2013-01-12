@@ -1,20 +1,10 @@
 (ns cemerick.friend
-  (:require [clojure.set :as set])
+  (:require [clojure.set :as set]
+            [cemerick.friend.util :as util])
   (:use (ring.util [response :as response :only (redirect)])
         [slingshot.slingshot :only (throw+ try+)]
         [clojure.core.incubator :only (-?>)])
   (:refer-clojure :exclude (identity)))
-
-(defn- original-url
-  [{:keys [scheme server-name server-port uri query-string]}]
-  (str (name scheme) "://" server-name
-       (cond
-         (and (= :http scheme) (not= server-port 80)) (str \: server-port)
-         (and (= :https scheme) (not= server-port 443)) (str \: server-port)
-         :else nil)
-       uri
-       (when (seq query-string)
-         (str \? query-string))))
 
 (def ^{:dynamic true} *default-scheme-ports* {:http 80 :https 443})
 
@@ -40,7 +30,7 @@
       (if (= (:scheme request) scheme)
         (handler request)
         ; TODO should this be permanent 301?
-        (redirect (original-url (assoc request
+        (redirect (util/original-url (assoc request
                                   :scheme scheme
                                   :server-port (scheme-mapping scheme))))))))
 
@@ -58,7 +48,7 @@
      (fn [request]
        (if (= (get-in request [:headers "x-forwarded-proto"]) (name scheme))
          (handler request)
-         (redirect (original-url
+         (redirect (util/original-url
                     (assoc request
                       :scheme scheme
                       :server-port (scheme-mapping scheme))))))))
@@ -165,7 +155,8 @@ Equivalent to (complement current-authentication)."}
 
 (defn- redirect-unauthorized
   [redirect-uri request]
-  (-> (ring.util.response/redirect redirect-uri)
+  (-> (util/resolve-absolute-uri request redirect-uri) 
+    ring.util.response/redirect
     (assoc :session (:session request))
     (assoc-in [:session ::unauthorized-uri] (:uri request))))
 

@@ -17,12 +17,12 @@
     (is (nil? (form-handler (request :get login-uri))))
 
     (is (= {:status 302
-            :headers {"Location" "/my_login?&login_failed=Y&username="}
+            :headers {"Location" "http://localhost/my_login?&login_failed=Y&username="}
             :body ""}
            (form-handler (request :post login-uri))))
 
     (is (= {:status 302
-            :headers {"Location" "/my_login?&login_failed=Y&username=foo"}
+            :headers {"Location" "http://localhost/my_login?&login_failed=Y&username=foo"}
             :body ""}
            (form-handler (assoc (request :post login-uri)
                                 :params {:username "foo"}))))

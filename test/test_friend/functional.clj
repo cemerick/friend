@@ -103,7 +103,8 @@
         (let [should-be-login-redirect (http/get (url "/user/account")
                                                  {:follow-redirects false})]
           (is (= 302 (:status should-be-login-redirect)))
-          (is (= "/login" (-> should-be-login-redirect :headers (get "location")))))
+          (is (re-matches #"http://localhost:\d+/login"
+                (-> should-be-login-redirect :headers (get "location")))))
         ; TODO should logout blow away the session completely?
         (is (= "auth-data" (get-session-data)))))))
 

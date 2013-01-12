@@ -1,5 +1,6 @@
-(ns cemerick.friend.workflows
-  (:require [cemerick.friend :as friend])
+1(ns cemerick.friend.workflows
+  (:require [cemerick.friend :as friend]
+            [cemerick.friend.util :as util])
   (:use [clojure.string :only (trim)]
         [cemerick.friend.util :only (gets)])
   (:import org.apache.commons.codec.binary.Base64))
@@ -59,11 +60,13 @@
 
 (defn interactive-login-redirect
   [{:keys [params] :as request}]
-  (ring.util.response/redirect (let [param (str "&login_failed=Y&username=" (java.net.URLEncoder/encode
-                                                                              (:username params "")))
-                                     login-uri (-> request ::friend/auth-config :login-uri)]
-                                 (str (if (.contains login-uri "?") login-uri (str login-uri "?"))
-                                      param))))
+  (ring.util.response/redirect
+    (let [param (str "&login_failed=Y&username="
+                  (java.net.URLEncoder/encode (:username params "")))
+          login-uri (-> request ::friend/auth-config :login-uri)]
+      (util/resolve-absolute-uri request
+        (str (if (.contains login-uri "?") login-uri (str login-uri "?"))
+          param)))))
 
 (defn interactive-form
   [& {:keys [login-uri credential-fn login-failure-handler redirect-on-auth?] :as form-config
