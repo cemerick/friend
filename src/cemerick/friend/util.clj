@@ -21,7 +21,7 @@
          (str \? query-string))))
 
 (defn resolve-absolute-uri
-  [uri request]
+  [^String uri request]
   (-> (original-url request)
     java.net.URI.
     (.resolve uri)
