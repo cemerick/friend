@@ -90,8 +90,11 @@
 
 (defroutes api-routes
   ;;;;; API
-  (GET "/auth-api" request (friend/authorize #{:api}
-                             (api-call 42))))
+  (GET "/auth-api" request
+    (friend/authorize #{:api} (api-call :authorized)))
+  (GET "/anon" request (api-call :anon))
+  (GET "/requires-authentication" request
+    (friend/authenticated (api-call :authenticated))))
 
 (def users {"root" {:username "root"
                     :password (creds/hash-bcrypt "admin_password")
@@ -122,7 +125,8 @@
   (handler/api
     (friend/authenticate
       api-routes
-      {:allow-anon? false
+      {:allow-anon? true
+       :unauthenticated-handler #(workflows/http-basic-deny mock-app-realm %)
        :workflows [(workflows/http-basic
                      :credential-fn (partial creds/bcrypt-credential-fn api-users)
                      :realm mock-app-realm)]})))

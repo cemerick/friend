@@ -1,6 +1,6 @@
 (ns cemerick.friend
-  (:require [clojure.set :as set]
-            [cemerick.friend.util :as util])
+  (:require [cemerick.friend.util :as util]
+            [clojure.set :as set])
   (:use (ring.util [response :as response :only (redirect)])
         [slingshot.slingshot :only (throw+ try+)]
         [clojure.core.incubator :only (-?>)])
@@ -153,21 +153,26 @@ Equivalent to (complement current-authentication)."}
           (update-in [:session] dissoc ::unauthorized-uri))
         resp))))
 
-(defn- redirect-unauthorized
-  [redirect-uri request]
-  (-> (util/resolve-absolute-uri request redirect-uri) 
+(defn default-unauthenticated-handler
+  [request]
+  (-> request
+    ::auth-config
+    :login-uri
+    (util/resolve-absolute-uri request)
     ring.util.response/redirect
     (assoc :session (:session request))
     (assoc-in [:session ::unauthorized-uri] (:uri request))))
 
 (defn- authenticate*
   [handler config request]
-  (let [{:keys [allow-anon? unauthorized-handler workflows login-uri] :as config}
+  (let [{:keys [allow-anon? unauthorized-handler unauthenticated-handler
+                workflows login-uri] :as config}
         (merge {:allow-anon? true
                 :default-landing-uri "/"
                 :login-uri "/login"
                 :credential-fn (constantly nil)
                 :workflows []
+                :unauthenticated-handler #'default-unauthenticated-handler
                 :unauthorized-handler #'default-unauthorized-handler}
                config)
         request (assoc request ::auth-config config)
@@ -184,7 +189,7 @@ Equivalent to (complement current-authentication)."}
               auth (identity request)]
           (binding [*identity* auth]
             (if (and (not auth) (not allow-anon?))
-              (redirect-unauthorized login-uri request)
+              (unauthenticated-handler request)
               (try+
                 (if-not new-auth?
                   (handler request)
@@ -193,11 +198,8 @@ Equivalent to (complement current-authentication)."}
                     (ensure-identity request)))
                 (catch ::type error-map
                   ;; TODO log unauthorized access at trace level
-                  (if auth
-                    (unauthorized-handler (assoc request
-                                                 ::authorization-failure
-                                                 error-map))
-                    (redirect-unauthorized login-uri request))))))))))
+                  ((if auth unauthorized-handler unauthenticated-handler)
+                    (assoc request ::authorization-failure error-map))))))))))
 
 (defn authenticate
   [ring-handler auth-config]

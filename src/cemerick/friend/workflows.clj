@@ -34,9 +34,7 @@
 (defn http-basic
   [& {:keys [credential-fn realm] :as basic-config}]
   (fn [{{:strs [authorization]} :headers :as request}]
-    (if-not authorization
-      (when-not (-> request ::friend/auth-config :allow-anon?)
-        (http-basic-deny realm request))
+    (when authorization
       (if-let [[[_ username password]] (try (-> (re-matches #"\s*Basic\s+(.+)" authorization)
                                               second
                                               (.getBytes "UTF-8")
@@ -64,9 +62,10 @@
     (let [param (str "&login_failed=Y&username="
                   (java.net.URLEncoder/encode (:username params "")))
           login-uri (-> request ::friend/auth-config :login-uri)]
-      (util/resolve-absolute-uri request
+      (util/resolve-absolute-uri
         (str (if (.contains login-uri "?") login-uri (str login-uri "?"))
-          param)))))
+          param)
+        request))))
 
 (defn interactive-form
   [& {:keys [login-uri credential-fn login-failure-handler redirect-on-auth?] :as form-config

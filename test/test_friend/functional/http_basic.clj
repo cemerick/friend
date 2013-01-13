@@ -16,14 +16,20 @@
     (catch [:status 401] {{:strs [www-authenticate]} :headers}
       (is (= www-authenticate (str "Basic realm=\"" mock-app-realm \"))))))
 
-(deftest http-basic-missing
+(defn- anon-request
+  [path]
   (try+
-    (http/get (url "/auth-api"))
+    (http/get (url path))
     (assert false) ; should never get here
     (catch [:status 401] {{:strs [www-authenticate]} :headers}
       (is (= www-authenticate (str "Basic realm=\"" mock-app-realm \"))))))
 
+(deftest http-basic-missing
+  (anon-request "/auth-api")
+  (anon-request "/requires-authentication"))
+
 (deftest http-basic
   (let [{:keys [body]} (http/get (url "/auth-api") {:basic-auth "api-key:api-pass"
                                                     :as :json})]
-    (is (= {:data 42} body))))
+    (is (= {:data "authorized"} body))
+    (is (= {:data "anon"} (:body (http/get (url "/anon") {:as :json}))))))

@@ -2,7 +2,7 @@
   (:require [cemerick.friend :as friend])
   (:use clojure.test
         ring.mock.request
-        [cemerick.friend.workflows :only (http-basic)]))
+        [cemerick.friend.workflows :as workflows :only (http-basic)]))
 
 (deftest basic-workflow
   (let [req (request :get "/uri")
@@ -10,7 +10,7 @@
         got-creds (atom nil)]
     (is (= {:status 401, :headers {"Content-Type" "text/plain"
                                    "WWW-Authenticate" "Basic realm=\"friend-test\""}}
-           ((http-basic :realm "friend-test") req)))
+          (workflows/http-basic-deny "friend-test" req)))
     
     (println "Don't worry, an exception is expected here:")
     (is (= 400 (:status ((http-basic) (header req "Authorization" "BadAuthHeader")))))
@@ -37,6 +37,7 @@
                    (header req "Authorization" "Basic Og=="))]
         (is (= {:identity ""} auth))))
     
-    (is (= {:status 401, :headers {"Content-Type" "text/plain", "WWW-Authenticate" "Basic realm=\"friend-test\""}}
-           ((http-basic :realm "friend-test" :credential-fn (constantly nil))
-             (header req "Authorization" auth))))))
+    (is (= {:status 401, :headers {"Content-Type" "text/plain"
+                                   "WWW-Authenticate" "Basic realm=\"friend-test\""}}
+          ((http-basic :realm "friend-test" :credential-fn (constantly nil))
+            (header req "Authorization" auth))))))
