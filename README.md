@@ -179,9 +179,9 @@ the requests to which are subject to the configuration provided to
 ### Authentication 
 
 There are two key abstractions employed during authentication:
-[workflow](http://github.com/cemerick/friend/blob/master/docs/workflows.md)
+[workflow](#workflows)
 and
-[credential](http://github.com/cemerick/friend/blob/master/docs/credentials.md)
+[credential](#credential-functions-and-authentication-maps)
 functions.  The example above defines a single workflow — one supporting
 the `POST`ing of `:username` and `:password` parameters to (by default)
 `/login` — which will discover the specified `:credential-fn` and use it
