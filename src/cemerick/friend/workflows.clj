@@ -1,4 +1,4 @@
-1(ns cemerick.friend.workflows
+(ns cemerick.friend.workflows
   (:require [cemerick.friend :as friend]
             [cemerick.friend.util :as util])
   (:use [clojure.string :only (trim)]
