@@ -206,11 +206,20 @@ Equivalent to (complement current-authentication)."}
   ; keeping authenticate* separate is damn handy for debugging hooks, etc.
   #(authenticate* ring-handler auth-config %))
 
-;; TODO
-#_(defmacro role-case
-  [])
-
 (defn throw-unauthorized
+  "Throws a slingshot stone (see `slingshot.slingshot/throw+`) containing
+   the [authorization-info] map, in addition to these slots:
+ 
+   :cemerick.friend/type - the type of authorization failure that has 
+        occurred, defaults to `:unauthorized`
+   :cemerick.friend/identity - the current identity, defaults to the
+        provided [identity] argument
+
+   Provided the stone is thrown within the context of an `authenticate`
+   middleware, handling of the original request will be delegated to its
+   `unauthorized-handler` or the `unauthenticated-handler` as appropriate,
+   with the slingshot stone's map assoc'ed into the request map under
+   `:cemerick.friend/authorization-failure`."
   [identity authorization-info]
   (throw+ (merge {::type :unauthorized
                   ::identity identity}
