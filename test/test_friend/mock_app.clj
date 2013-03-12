@@ -22,6 +22,8 @@
 
 (def mock-app-realm "mock-app-realm")
 
+(def missles-fired? (atom false))
+
 (defn- json-response
   [x]
   (-> (json/generate-string x)
@@ -78,9 +80,9 @@
   (GET "/admin" request (friend/authorize #{::admin}
                           (page-bodies (:uri request))))
   (GET "/hook-admin" request (admin-hook-authorized-fn request))
-  (GET "/incl-auth-failure-data" request (friend/authorize #{::admin}
-                                           {:response-msg "403 message thrown with unauthorized stone"}
-                                           (:uri request)))
+  (GET "/fire-missles" request (friend/authorize #{::admin}
+                                 {:response-msg "403 message thrown with unauthorized stone"}
+                                 (reset! missles-fired? "shouldn't happen")))
   
   (GET "/view-openid" request
        (str "OpenId authentication? " (-?> request friend/identity friend/current-authentication pr-str)))

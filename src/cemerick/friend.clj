@@ -263,16 +263,22 @@ Equivalent to (complement current-authentication)."}
    middleware.
 
    The exception that causes this change in control flow carries a map of
-   data describing the authorization failure; you can optionally provide
-   an auxillary map that is merged to it as the first form of the body
-   of code wrapped by `authorize`.
+   data describing the authorization failure (see `throw-unauthorized`).
+   You can optionally provide an auxillary map that is merged to it as the
+   first form of the body of code wrapped by `authorize`, e.g.:
+
+     (authorize #{::user :some.ns/admin}
+       {:op-name \"descriptive name for secured operation\"}
+        
 
    Note that this macro depends upon the *identity* var being bound to the
    current user's authentications.  This will work fine in e.g. agent sends
    and futures and such, but will fall down in places where binding conveyance
-   don't apply (e.g. lazy sequences, direct java.lang.Thread usages, etc)."
-  [roles & body]
-  (let [[unauthorized-info & body] (if (map? (first body)) body (cons nil body))]
+   doesn't apply (e.g. lazy sequences, direct java.lang.Thread usages, etc)."
+  [roles & [authz-failure-map? & body]]
+  (let [[unauthorized-info body] (if (and (seq body) (map? authz-failure-map?))
+                                    [authz-failure-map? body]
+                                    [nil (cons authz-failure-map? body)])]
     `(let [roles# ~roles]
        (if (authorized? roles# *identity*)
          (do ~@body)

@@ -3,7 +3,8 @@
   (:use clojure.test
         ring.adapter.jetty
         [slingshot.slingshot :only (throw+ try+)]
-        [test-friend.mock-app :only (mock-app mock-app-realm users page-bodies)]))
+        [test-friend.mock-app :only (mock-app mock-app-realm users
+                                      page-bodies missles-fired?)]))
 
 (declare test-port)
 
@@ -12,6 +13,7 @@
   (let [server (ring.adapter.jetty/run-jetty app {:port 0 :join? false})
         port (-> server .getConnectors first .getLocalPort)]
     (def test-port port)  ;; would use with-redefs, but can't test on 1.2
+    (reset! missles-fired? false)
     (try
       (f)
       (finally
@@ -124,10 +126,11 @@
   (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
     (http/post (url "/login") {:form-params {:username "jane" :password "user_password"}})
     (try+
-      (http/get (url "/incl-auth-failure-data"))
-      (assert false) ; should never get here
+      (http/get (url "/fire-missles"))
+      (is false "should not get here")
       (catch [:status 403] resp
-        (is (= "403 message thrown with unauthorized stone" (:body resp)))))))
+        (is (= "403 message thrown with unauthorized stone" (:body resp)))))
+    (is (not @missles-fired?))))
 
 (deftest admin-login
   (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
