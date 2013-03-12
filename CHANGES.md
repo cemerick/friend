@@ -1,5 +1,16 @@
 ## [Friend](http://github.com/cemerick/friend) changelog
 
+### `0.1.4`
+
+**Core API**
+
+* Fixed handling of the optional authorization-error map that may be provided 
+  to `authorize` (gh-46)
+
+**Misc**
+
+* Various minor documentation improvements.
+
 ### `0.1.3`
 
 **Core API**
