@@ -176,6 +176,10 @@ the requests to which are subject to the configuration provided to
 `authenticate` and the authorization contexts that are defined within
 `ring-app` (which we'll get to shortly).
 
+(If you're newer to Clojure, you might not recognize the tokens prefixed with
+two colons [e.g. `::admin`].  These are auto-namespaced keywords; in the example
+above, `::admin` expands to `:your.ring.app/admin`.)
+
 ### Authentication 
 
 There are two key abstractions employed during authentication:
