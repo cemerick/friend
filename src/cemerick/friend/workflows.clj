@@ -1,6 +1,7 @@
 (ns cemerick.friend.workflows
   (:require [cemerick.friend :as friend]
-            [cemerick.friend.util :as util])
+            [cemerick.friend.util :as util]
+            [ring.util.request :as req])
   (:use [clojure.string :only (trim)]
         [cemerick.friend.util :only (gets)])
   (:import org.apache.commons.codec.binary.Base64))
@@ -70,8 +71,8 @@
 (defn interactive-form
   [& {:keys [login-uri credential-fn login-failure-handler redirect-on-auth?] :as form-config
       :or {redirect-on-auth? true}}]
-  (fn [{:keys [uri request-method params] :as request}]
-    (when (and (= (gets :login-uri form-config (::friend/auth-config request)) uri)
+  (fn [{:keys [request-method params] :as request}]
+    (when (and (= (gets :login-uri form-config (::friend/auth-config request)) (req/path-info request))
                (= :post request-method))
       (let [{:keys [username password] :as creds} (select-keys params [:username :password])]
         (if-let [user-record (and username password

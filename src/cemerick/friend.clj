@@ -158,6 +158,7 @@ Equivalent to (complement current-authentication)."}
   (-> request
     ::auth-config
     :login-uri
+    (#(str (:context request) %))
     (util/resolve-absolute-uri request)
     ring.util.response/redirect
     (assoc :session (:session request))
