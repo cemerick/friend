@@ -62,7 +62,7 @@
   (ring.util.response/redirect
     (let [param (str "&login_failed=Y&username="
                   (java.net.URLEncoder/encode (:username params "")))
-          ^String login-uri (-> request ::friend/auth-config :login-uri)]
+          ^String login-uri (-> request ::friend/auth-config :login-uri (#(str (:context request) %)))]
       (util/resolve-absolute-uri
         (str (if (.contains login-uri "?") login-uri (str login-uri "?"))
           param)
