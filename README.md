@@ -131,15 +131,23 @@ Or, add this to your Maven project's `pom.xml`:
 </dependency>
 ```
 
-Friend is compatible with Clojure 1.2.0 - 1.4.0+.
+Friend is compatible with Clojure 1.2.0 - 1.5.0+.
 
 ## Usage
 
-There is a fairly ornate Ring application
-[here](http://github.com/cemerick/friend/blob/master/test/test_friend/mock_app.clj)
-that is the basis for Friend's functional tests that you can look at.
-That's likely a little hard to navigate though, so a simpler
-introduction is worthwhile.
+How you use Friend will vary, sometimes significantly, depending on the
+authentication providers you use and the authorization policy/ies you want to
+enforce.  A generic example of typical usage of Friend is below, but the best
+way to become familiar with Friend and how it can be used would be to go check
+out
+
+### [_http://friend-demo.herokuapp.com_](http://friend-demo.herokuapp.com)
+
+…a collection of tiny demonstration apps using Friend.  It should be easy to
+find the one(s) that apply to your situation, and go straight to its source so
+you can see how all the pieces fit together.
+
+-----
 
 Here's probably the most self-contained Friend usage possible:  
 
