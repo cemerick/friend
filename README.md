@@ -1,7 +1,7 @@
 # Friend  [![Travis CI status](https://secure.travis-ci.org/cemerick/friend.png)](http://travis-ci.org/#!/cemerick/friend/builds)
 
 An extensible authentication and authorization library for
-[Clojure](http://clojure.org) [Ring](http://github.com/ring-clojure/ring)
+[Clojure](http://clojure.org)/[Ring](http://github.com/ring-clojure/ring)
 web applications and services.  
 
 ```
@@ -28,10 +28,9 @@ suspicious days. Those were happier times. Now let us go!"
 ## Overview
 
 Friend is intended to provide a foundation for addressing
-all of the security concerns associated with web apps:
+all of the authentication and authorization concerns associated with web
+apps:
 
-* channel security (restricting certain resources to a particular
-  protocol/scheme, usually HTTPS)
 * user agent authentication; Friend currently includes support for form,
   HTTP Basic, and OpenId authentication, and makes it easy to:
   * implement and use other workflows
@@ -43,6 +42,8 @@ all of the security concerns associated with web apps:
   multiple simultaneous logins, as well as to allow administrators to
   take on users' identities for debugging or support purposes (**in
       progress**)
+* channel security (restricting certain resources to a particular
+  protocol/scheme, usually HTTPS)
 * and the creature comforts:
   * Ring middlewares for configuring and defining the scopes of
     authentication, authorization, and channel security
