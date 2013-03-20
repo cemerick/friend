@@ -233,14 +233,17 @@ which contains a map to be called with a ring handler."
         workflow-result
         (no-workflow-result-request request config workflow-result))))
 
+(defn- authenticate*
+  [ring-handler auth-config request]
+  (let [response-or-handler-map (authenticate-request request auth-config)
+        response (if-let [handler-map (:friend/handler-map response-or-handler-map)]
+                   (handler-request ring-handler handler-map) response-or-handler-map)]
+    (authenticate-response response request)))
+
 (defn authenticate
   [ring-handler auth-config]
   ; keeping authenticate* separate is damn handy for debugging hooks, etc.
-  (fn [request]
-    (let [response-or-handler-map (authenticate-request request auth-config)
-          response (if-let [handler-map (:friend/handler-map response-or-handler-map)]
-                     (handler-request ring-handler handler-map) response-or-handler-map)]
-      (authenticate-response response request))))
+  #(authenticate* ring-handler auth-config %))
 
 (defn throw-unauthorized
   "Throws a slingshot stone (see `slingshot.slingshot/throw+`) containing
