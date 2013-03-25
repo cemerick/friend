@@ -248,9 +248,14 @@ Equivalent to (complement current-authentication)."}
   "Returns the first value in the :roles of the current authentication
    in the given identity map that isa? one of the required roles.
    Returns nil otherwise, indicating that the identity is not authorized
-   for the set of required roles."
+   for the set of required roles. If :roles is a fn, it will be executed
+   with no args and assumed to return a collection of roles."
   [roles identity]
-  (let [granted-roles (-> identity current-authentication :roles)]
+  (let [granted-roles (-> identity current-authentication :roles)
+        granted-roles (if (fn? granted-roles)
+                        (granted-roles)
+                        granted-roles)]
+
     (first (for [granted granted-roles
                  required roles
                  :when (isa? granted required)]

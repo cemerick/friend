@@ -101,6 +101,10 @@
 (def users {"root" {:username "root"
                     :password (creds/hash-bcrypt "admin_password")
                     :roles #{::admin}}
+
+            "root-fn-role" {:username "root-fn-role"
+                            :password (creds/hash-bcrypt "admin_password")
+                            :roles (constantly #{::admin})}
             "jane" {:username "jane"
                     :password (creds/hash-bcrypt "user_password")
                     :roles #{::user}}})

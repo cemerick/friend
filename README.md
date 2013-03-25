@@ -305,7 +305,7 @@ to the application, but two entries are priviliged:
 form or HTTP Basic authentication, an oAuth token, etc.; this value
 _must_ be unique across all users within the application
 * `:roles`, an optional collection of values enumerating the roles for
-which the user is authorized.
+which the user is authorized, or a function returning the same.
 
 _If a map of credentials is found to be invalid, the credential function must
 return nil._
