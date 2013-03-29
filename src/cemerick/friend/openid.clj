@@ -4,6 +4,7 @@
             [cemerick.friend.util :as util]
             clojure.walk
             ring.util.response
+            [ring.util.request :as req]
             [clojure.core.cache :as cache])
   (:use clojure.core.incubator
         [cemerick.friend.util :only (gets)])
@@ -103,8 +104,8 @@
                   (.setAssociations (InMemoryConsumerAssociationStore.))
                   (.setNonceVerifier (InMemoryNonceVerifier. (/ max-nonce-age 1000)))))
         discovery-cache (atom (cache/ttl-cache-factory {} :ttl max-nonce-age))]
-    (fn [{:keys [uri request-method params] :as request}]
-      (when (= uri openid-uri)
+    (fn [{:keys [ request-method params] :as request}]
+      (when (=  (req/path-info request) openid-uri)
         (let [params (clojure.walk/stringify-keys params)
               user-identifier (and (= request-method :post)
                                    (get params (name user-identifier-param)))]
