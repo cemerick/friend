@@ -141,6 +141,11 @@
     (check-user-role-access)
     (is (= {:roles ["test-friend.mock-app/admin"]} (:body (http/get (url "/echo-roles") {:as :json}))))))
 
+(deftest admin-login-fn-role
+  (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
+    (http/post (url "/login") {:form-params {:username "root-fn-role" :password "admin_password"}})
+    (check-user-role-access)))
+
 (deftest logout-only-on-correct-uri
   ;; logout middleware was previously being applied eagerly
   (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
