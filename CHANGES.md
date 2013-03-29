@@ -1,5 +1,20 @@
 ## [Friend](http://github.com/cemerick/friend) changelog
 
+### `0.1.5`
+
+Friend is now tracking Ring v1.2.0 betas, minimally requiring
+`[ring/ring-core "1.2.0-beta1"]`.
+
+**Core API**
+
+* `:roles` in authentication maps may now optionally be a function returning a
+  collection of roles (gh-21, gh-55)
+
+**Workflows**
+
+* All included workflows now properly account for the in-force Ring context, if
+  any. (gh-52, gh-53, gh-56)
+
 ### `0.1.4`
 
 **Core API**
