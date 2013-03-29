@@ -146,7 +146,7 @@ Equivalent to (complement current-authentication)."}
           resp (response/redirect-after-post
                  (or unauthorized-uri
                      (and (string? redirect) redirect)
-                     (-> request ::auth-config :default-landing-uri)))]
+                      (str (:context request) (-> request ::auth-config :default-landing-uri ))))]
       (if unauthorized-uri
         (-> resp
           (assoc :session (:session request))
