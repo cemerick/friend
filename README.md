@@ -114,7 +114,7 @@ Friend is available in Clojars. Add this `:dependency` to your Leiningen
 `project.clj`:
 
 ```clojure
-[com.cemerick/friend "0.1.4"]
+[com.cemerick/friend "0.1.5"]
 ```
 
 Or, add this to your Maven project's `pom.xml`:
@@ -128,7 +128,7 @@ Or, add this to your Maven project's `pom.xml`:
 <dependency>
   <groupId>com.cemerick</groupId>
   <artifactId>friend</artifactId>
-  <version>0.1.4</version>
+  <version>0.1.5</version>
 </dependency>
 ```
 
@@ -305,7 +305,7 @@ to the application, but two entries are priviliged:
 form or HTTP Basic authentication, an oAuth token, etc.; this value
 _must_ be unique across all users within the application
 * `:roles`, an optional collection of values enumerating the roles for
-which the user is authorized.
+which the user is authorized, or a function returning the same.
 
 _If a map of credentials is found to be invalid, the credential function must
 return nil._

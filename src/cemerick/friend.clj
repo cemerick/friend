@@ -146,7 +146,7 @@ Equivalent to (complement current-authentication)."}
           resp (response/redirect-after-post
                  (or unauthorized-uri
                      (and (string? redirect) redirect)
-                     (-> request ::auth-config :default-landing-uri)))]
+                      (str (:context request) (-> request ::auth-config :default-landing-uri ))))]
       (if unauthorized-uri
         (-> resp
           (assoc :session (:session request))
@@ -286,9 +286,14 @@ which contains a map to be called with a ring handler."
   "Returns the first value in the :roles of the current authentication
    in the given identity map that isa? one of the required roles.
    Returns nil otherwise, indicating that the identity is not authorized
-   for the set of required roles."
+   for the set of required roles. If :roles is a fn, it will be executed
+   with no args and assumed to return a collection of roles."
   [roles identity]
-  (let [granted-roles (-> identity current-authentication :roles)]
+  (let [granted-roles (-> identity current-authentication :roles)
+        granted-roles (if (fn? granted-roles)
+                        (granted-roles)
+                        granted-roles)]
+
     (first (for [granted granted-roles
                  required roles
                  :when (isa? granted required)]
