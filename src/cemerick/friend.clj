@@ -205,7 +205,7 @@ Equivalent to (complement current-authentication)."}
           :catch-handler (if auth unauthorized-handler unauthenticated-handler)})))))
 
 (defn handler-request
-  "Calls handler with approprite binding and error catching and returns a response."
+  "Calls handler with appropriate binding and error catching and returns a response."
   [handler {:keys [catch-handler request auth]}]
   (binding [*identity* auth]
     (try+
