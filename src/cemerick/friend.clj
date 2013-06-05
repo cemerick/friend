@@ -164,17 +164,65 @@ Equivalent to (complement current-authentication)."}
     (assoc :session (:session request))
     (assoc-in [:session ::unauthorized-uri] (:uri request))))
 
-(defn- authenticate*
-  [handler config request]
-  (let [{:keys [allow-anon? unauthorized-handler unauthenticated-handler
-                workflows login-uri] :as config}
+(defn authenticate-response
+  "Adds to the response's :session for responses with a :friend/ensure-identity-request key."
+  [response request]
+  (if-let [new-request (:friend/ensure-identity-request response)]
+    (ensure-identity (dissoc response :friend/ensure-identity-request) new-request)
+    (dissoc response :friend/ensure-identity-request)))
+
+(defn- retry-request
+  [{:keys [request new-auth? workflow-result catch-handler] :as args}]
+  (try+
+   (if-not new-auth?
+     {:friend/handler-map (select-keys args [:request :catch-handler :auth])}
+     (when-let [response (or (redirect-new-auth workflow-result request)
+                             {:friend/handler-map (select-keys args [:request :catch-handler :auth])})]
+       (assoc response :friend/ensure-identity-request request)))
+   (catch ::type error-map
+     ;; TODO log unauthorized access at trace level
+     (catch-handler
+      (assoc request ::authorization-failure error-map)))))
+
+(defn- no-workflow-result-request [request config workflow-result]
+  (let [{:keys [unauthenticated-handler unauthorized-handler allow-anon?]}
         (merge {:allow-anon? true
-                :default-landing-uri "/"
+                :unauthenticated-handler #'default-unauthenticated-handler
+                :unauthorized-handler #'default-unauthorized-handler} config)
+        new-auth? (auth? workflow-result)
+        request (if new-auth?
+                  (merge-authentication request workflow-result)
+                  request)
+        auth (identity request)]
+    (binding [*identity* auth]
+      (if (and (not auth) (not allow-anon?))
+        (unauthenticated-handler request)
+        (retry-request
+         {:request request
+          :auth auth
+          :new-auth? new-auth?
+          :workflow-result workflow-result
+          :catch-handler (if auth unauthorized-handler unauthenticated-handler)})))))
+
+(defn handler-request
+  "Calls handler with appropriate binding and error catching and returns a response."
+  [handler {:keys [catch-handler request auth]}]
+  (binding [*identity* auth]
+    (try+
+     (handler request)
+     (catch ::type error-map
+       (catch-handler
+        (assoc request ::authorization-failure error-map))))))
+
+(defn authenticate-request
+  "Returns response if there is one. Otherwise returns a map with :friend/handler-map key
+which contains a map to be called with a ring handler."
+  [request config]
+  (let [{:keys [workflows login-uri] :as config}
+        (merge {:default-landing-uri "/"
                 :login-uri "/login"
                 :credential-fn (constantly nil)
-                :workflows []
-                :unauthenticated-handler #'default-unauthenticated-handler
-                :unauthorized-handler #'default-unauthorized-handler}
+                :workflows []}
                config)
         request (assoc request ::auth-config config)
         workflow-result (->> (map #(% request) workflows)
@@ -183,24 +231,14 @@ Equivalent to (complement current-authentication)."}
       (if (and workflow-result (not (auth? workflow-result)))
         ;; workflow assumed to be a ring response
         workflow-result
-        (let [new-auth? (auth? workflow-result)
-              request (if new-auth?
-                        (merge-authentication request workflow-result)
-                        request)
-              auth (identity request)]
-          (binding [*identity* auth]
-            (if (and (not auth) (not allow-anon?))
-              (unauthenticated-handler request)
-              (try+
-                (if-not new-auth?
-                  (handler request)
-                  (-?> (or (redirect-new-auth workflow-result request)
-                           (handler request))
-                    (ensure-identity request)))
-                (catch ::type error-map
-                  ;; TODO log unauthorized access at trace level
-                  ((if auth unauthorized-handler unauthenticated-handler)
-                    (assoc request ::authorization-failure error-map))))))))))
+        (no-workflow-result-request request config workflow-result))))
+
+(defn- authenticate*
+  [ring-handler auth-config request]
+  (let [response-or-handler-map (authenticate-request request auth-config)
+        response (if-let [handler-map (:friend/handler-map response-or-handler-map)]
+                   (handler-request ring-handler handler-map) response-or-handler-map)]
+    (authenticate-response response request)))
 
 (defn authenticate
   [ring-handler auth-config]
