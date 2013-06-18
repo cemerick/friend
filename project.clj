@@ -1,4 +1,4 @@
-(defproject com.cemerick/friend "0.1.6-SNAPSHOT"
+(defproject com.cemerick/friend "0.2.0-SNAPSHOT"
   :description "Authentication and authorization library for Ring Clojure web apps and services."
   :url "http://github.com/cemerick/friend"
   :license {:name "Eclipse Public License"
@@ -38,7 +38,7 @@
                             :compile-path "target/sanity-check-aot"}
              :1.2 {:dependencies [[org.clojure/clojure "1.2.0"]]}
              :1.3 {:dependencies [[org.clojure/clojure "1.3.0"]]}
-             :1.5 {:dependencies [[org.clojure/clojure "1.5.0-RC2"]]}}
+             :1.5 {:dependencies [[org.clojure/clojure "1.5.1"]]}}
   :aliases  {"all" ["with-profile" "dev,1.2:dev,1.3:dev:dev,1.5"]
              "sanity-check" ["do" "clean," "with-profile" "sanity-check" "compile"]})
 
