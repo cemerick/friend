@@ -2,7 +2,7 @@
 
 An extensible authentication and authorization library for
 [Clojure](http://clojure.org)/[Ring](http://github.com/ring-clojure/ring)
-web applications and services.  
+web applications and services.
 
 ```
 Picking up his staff he stood before the rock and said in a clear voice:
@@ -21,9 +21,9 @@ people, was on the right track. The opening word was inscribed on the
 archway all the time! The translation should have been: Say 'Friend' and
 enter. I had only to speak the Elvish work for friend and the doors
 opened. Quite simple. Too simple for a learned lore master in these
-suspicious days. Those were happier times. Now let us go!" 
+suspicious days. Those were happier times. Now let us go!"
 ```
-— J.R.R. Tolkien, _Lord of the Rings_ 
+— J.R.R. Tolkien, _Lord of the Rings_
 
 ## Overview
 
@@ -150,7 +150,7 @@ you can see how all the pieces fit together.
 
 -----
 
-Here's probably the most self-contained Friend usage possible:  
+Here's probably the most self-contained Friend usage possible:
 
 ```clojure
 (ns your.ring.app
@@ -189,7 +189,7 @@ the requests to which are subject to the configuration provided to
 two colons [e.g. `::admin`].  These are auto-namespaced keywords; in the example
 above, `::admin` expands to `:your.ring.app/admin`.)
 
-### Authentication 
+### Authentication
 
 There are two key abstractions employed during authentication:
 [workflow](#workflows)
@@ -253,7 +253,7 @@ middleware will either:
 
 If a workflow returns a Ring response, then that response is sent back
 to the user agent straight away (after some bookkeeping by the
-`authenticate` middleware to preserve session states and such).  This 
+`authenticate` middleware to preserve session states and such).  This
 makes it possible for a workflow to control a "local" dataflow between
 itself, the user agent, and any necessary external authorities (e.g. by
 redirecting a user agent to an OpenId endpoint, performing token
@@ -299,7 +299,7 @@ return a _authentication map_ that aggregates all authentication and
 authorization information available for the identified user.  This map
 may contain many entries, depending upon the authentication information
 that is relevant for the workflow in question and the user data relevant
-to the application, but two entries are priviliged:
+to the application, but two entries are privileged:
 
 * `:identity` (**required**) corresponds with e.g. the username in a
 form or HTTP Basic authentication, an oAuth token, etc.; this value
@@ -326,7 +326,7 @@ particular resources or code:
   authenticated
 * `authorized?` is a predicate that returns true only if the current
   user (as determined via the _authentication map_ returned by a
-workflow) posesses the specified _roles_.  You'll usually want to use
+workflow) possesses the specified _roles_.  You'll usually want to use
 one of the higher-level facilities (keep reading), but `authorized?` may
 come in handy if access to a certain resource or operation cannot be
 specified declaratively.
@@ -369,7 +369,7 @@ Here's an extension of the example above that adds some actual routes
   (GET "/" request "Landing page.")
   (GET "/login" request "Login page.")
   (friend/logout (ANY "/logout" request (ring.util.response/redirect "/"))))
-``` 
+```
 
 This should be easy to grok, but some highlights:
 
@@ -432,7 +432,7 @@ a given Ring handler:
 ```
 
 Note that `requires-scheme` is unrelated to the authentication,
-authorization, etc facilities in Friend, and can be used in isolation. 
+authorization, etc facilities in Friend, and can be used in isolation.
 
 ## TODO
 

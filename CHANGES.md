@@ -107,7 +107,7 @@ and `throw-authorized`)
 
 **Workflows**
 
-* http-basic workflow now properly responds with www-authenicate challenge when
+* http-basic workflow now properly responds with www-authenticate challenge when
   no credentials are provided and `:allow-anon?` is false (gh-16)
 * the OpenID workflow's `:max-nonce-age` must now be specified in milliseconds
   instead of seconds
