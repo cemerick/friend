@@ -19,7 +19,7 @@ wonder.
 "I was wrong after all," said Gandalf, "and Gimli too. Merry, of all
 people, was on the right track. The opening word was inscribed on the
 archway all the time! The translation should have been: Say 'Friend' and
-enter. I had only to speak the Elvish work for friend and the doors
+enter. I had only to speak the Elvish word for friend and the doors
 opened. Quite simple. Too simple for a learned lore master in these
 suspicious days. Those were happier times. Now let us go!"
 ```
