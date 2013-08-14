@@ -58,10 +58,10 @@
         {:status 400 :body "Malformed Authorization header for HTTP Basic authentication."}))))
 
 (defn interactive-login-redirect
-  [{:keys [params] :as request}]
+  [{:keys [form-params params] :as request}]
   (ring.util.response/redirect
     (let [param (str "&login_failed=Y&username="
-                  (java.net.URLEncoder/encode (:username params "")))
+                     (java.net.URLEncoder/encode (or (get form-params "username") (:username params ""))))
           ^String login-uri (-> request ::friend/auth-config :login-uri (#(str (:context request) %)))]
       (util/resolve-absolute-uri
         (str (if (.contains login-uri "?") login-uri (str login-uri "?"))
@@ -71,15 +71,17 @@
 (defn interactive-form
   [& {:keys [login-uri credential-fn login-failure-handler redirect-on-auth?] :as form-config
       :or {redirect-on-auth? true}}]
-  (fn [{:keys [request-method params] :as request}]
+  (fn [{:keys [request-method params form-params] :as request}]
     (when (and (= (gets :login-uri form-config (::friend/auth-config request)) (req/path-info request))
                (= :post request-method))
-      (let [{:keys [username password] :as creds} (select-keys params [:username :password])]
+      (let [creds {:username (get form-params "username" "")
+                   :password (:password params)}
+            {:keys [username password]} creds]
         (if-let [user-record (and username password
                                   ((gets :credential-fn form-config (::friend/auth-config request))
-                                    (with-meta creds {::friend/workflow :interactive-form})))]
+                                   (with-meta creds {::friend/workflow :interactive-form})))]
           (make-auth user-record
                      {::friend/workflow :interactive-form
                       ::friend/redirect-on-auth? redirect-on-auth?})
           ((or (gets :login-failure-handler form-config (::friend/auth-config request)) #'interactive-login-redirect)
-            (update-in request [::friend/auth-config] merge form-config)))))))
+           (update-in request [::friend/auth-config] merge form-config)))))))
