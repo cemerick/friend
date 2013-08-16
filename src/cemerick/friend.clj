@@ -162,7 +162,7 @@ Equivalent to (complement current-authentication)."}
     (util/resolve-absolute-uri request)
     ring.util.response/redirect
     (assoc :session (:session request))
-    (assoc-in [:session ::unauthorized-uri] (:uri request))))
+    (assoc-in [:session ::unauthorized-uri] (util/original-url request))))
 
 (defn authenticate-response
   "Adds to the response's :session for responses with a :friend/ensure-identity-request key."
