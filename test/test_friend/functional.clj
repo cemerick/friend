@@ -62,14 +62,14 @@
 
 (deftest user-login
   (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
-    (is (= (page-bodies "/login") (:body (http/get (url "/user/account")))))
+    (is (= (page-bodies "/login") (:body (http/get (url "/user/account?query-string=test")))))
     (let [resp (http/post (url "/login")
                  {:form-params {:username "jane" :password "user_password"}})]
       ; ensure that previously-requested page is redirected to upon redirecting authentication
       ; clj-http *should* redirect us, but isn't yet; working on it: 
       ; https://github.com/dakrone/clj-http/issues/57
       (is (http/redirect? resp))
-      (is (= "/user/account" (-> resp :headers (get "location")))))
+      (is (= (url "/user/account?query-string=test") (-> resp :headers (get "location")))))
     (check-user-role-access)
     (is (= {:roles ["test-friend.mock-app/user"]} (:body (http/get (url "/echo-roles") {:as :json}))))
     
