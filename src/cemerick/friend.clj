@@ -272,7 +272,7 @@ which contains a map to be called with a ring handler."
 
    The exception that causes this change in control flow carries a map of
    data describing the authorization failure; you can optionally provide
-   an auxillary map that is merged to it as the first form of the body
+   an auxiliary map that is merged to it as the first form of the body
    of code wrapped by `authenticated`."
   [& body]
   (let [[unauthorized-info body] (if (map? (first body)) body [nil body])]
@@ -308,7 +308,7 @@ which contains a map to be called with a ring handler."
 
    The exception that causes this change in control flow carries a map of
    data describing the authorization failure (see `throw-unauthorized`).
-   You can optionally provide an auxillary map that is merged to it as the
+   You can optionally provide an auxiliary map that is merged to it as the
    first form of the body of code wrapped by `authorize`, e.g.:
 
      (authorize #{::user :some.ns/admin}
