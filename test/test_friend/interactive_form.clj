@@ -25,11 +25,21 @@
             :headers {"Location" "http://localhost/my_login?&login_failed=Y&username=foo"}
             :body ""}
            (form-handler (assoc (request :post login-uri)
-                                :params {:username "foo"}))))
+                                :params {:username "foo"}
+                                :form-params {"username" "foo"}))))
+
+    (is (= {:status 302
+            :headers {"Location" "http://localhost/my_login?&login_failed=Y&username=foobar"}
+            :body ""}
+           (form-handler (assoc (request :post login-uri)
+                                :params {:username "foo"}
+                                :form-params {"username" "foobar"}))))
 
     (let [auth (form-handler (assoc (request :post login-uri)
-                                    :params {:username "Aladdin"
-                                             :password "open sesame"}))]
+                                    :params {:username "foo"
+                                             :password "open sesame"}
+                                    :form-params {"username" "Aladdin"
+                                                  "password" "open sesame"}))]
       (is (= auth {:identity "Aladdin"}))
       (is (= (meta auth) {::friend/workflow :interactive-form
                           :type ::friend/auth
