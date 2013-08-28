@@ -57,11 +57,20 @@
   (GET "/login" request (page-bodies (:uri request)))
   (GET "/free-api" request (api-call 99))
   (friend/logout (ANY "/logout" request (resp/redirect "/")))
+  (friend/switch-user
+    (POST "/switch-user" request (resp/response "User switched"))
+    #(-> % :params :user))
   
   (GET "/echo-roles" request (friend/authenticated
                                (-> (friend/current-authentication request)
                                  (select-keys [:roles])
                                  json-response)))
+
+  (GET "/echo-identity" request  (-> request
+                                     :session
+                                     :cemerick.friend/identity
+                                     :current
+                                     resp/response))
   
   ;;;;; session integrity
   (GET "/session-value" request
