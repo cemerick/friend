@@ -346,7 +346,7 @@ allows you to place authorization guards around functions defined in
 code you don't control.
 
 Here's an extension of the example above that adds some actual routes
-(using Compojure) and handler that require authentication:
+(using Compojure) and handler that requires authentication:
 
 ```clojure
 (use '[compojure.core :as compojure :only (GET ANY defroutes)])
