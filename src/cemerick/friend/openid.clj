@@ -17,10 +17,10 @@
 
 (def ^{:private true} ax-props
   {"country" "http://axschema.org/contact/country/home"
-   "email"	"http://axschema.org/contact/email"  ;"http://schema.openid.net/contact/email".
+   "email" "http://axschema.org/contact/email"  ;"http://schema.openid.net/contact/email".
    "firstname" "http://axschema.org/namePerson/first"
-   "language"	"http://axschema.org/pref/language"
-   "lastname"	"http://axschema.org/namePerson/last"})
+   "language" "http://axschema.org/pref/language"
+   "lastname" "http://axschema.org/namePerson/last"})
 
 (def ^{:private true} sreg-attrs
   ["nickname", "email", "fullname", "dob",
@@ -45,11 +45,15 @@
   [^ConsumerManager mgr discovery-cache user-identifier {:keys [session] :as request} realm]
   (let [discoveries (.discover mgr user-identifier)
         provider-info (.associate mgr discoveries)
-        return-url (str (util/original-url request) "?" return-key "=1")
+        return-url-base (or (::return-url request)
+                            (util/original-url request))
+        return-url (str return-url-base
+                        (if (.contains return-url-base "?") "&" "?")
+                        return-key "=1")
         auth-req (request-attribute-exchange
-                   (if realm
-                     (.authenticate mgr provider-info return-url realm)
-                     (.authenticate mgr provider-info return-url)))
+                  (if realm
+                    (.authenticate mgr provider-info return-url realm)
+                    (.authenticate mgr provider-info return-url)))
         discovery-key (str (java.util.UUID/randomUUID))]
     (swap! discovery-cache assoc discovery-key provider-info)
     (assoc (ring.util.response/redirect (.getDestinationUrl auth-req true))
@@ -70,7 +74,7 @@
                                         type (.getOpEndpoint response)))
                        (.printStackTrace e)))]
       (when (instance? ext-class ext)  ;; is this ever necessary? yanked from the examples...
-        (->> attr-keys 
+        (->> attr-keys
           (map #(when-let [v (.getAttributeValue ext %)] [(keyword %) v]))
           (into ^{:type type} {}))))))
 
@@ -113,7 +117,7 @@
             user-identifier
             (handle-init mgr discovery-cache user-identifier request
                          (gets :realm openid-config (::friend/auth-config request)))
-            
+
             (contains? params return-key)
             (if-let [auth-map (handle-return mgr discovery-cache
                                              (assoc request :params params) openid-config)]
@@ -122,7 +126,7 @@
               ((or (gets :login-failure-handler openid-config (::friend/auth-config request))
                    #'workflows/interactive-login-redirect)
                 (update-in request [::friend/auth-config] merge openid-config)))
-            
+
             ;; TODO correct response code?
             :else ((gets :login-failure-handler openid-config (::friend/auth-config request))
                     request)))))))
