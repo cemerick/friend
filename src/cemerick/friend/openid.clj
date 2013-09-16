@@ -45,11 +45,15 @@
   [^ConsumerManager mgr discovery-cache user-identifier {:keys [session] :as request} realm]
   (let [discoveries (.discover mgr user-identifier)
         provider-info (.associate mgr discoveries)
-        return-url (str (util/original-url request) "?" return-key "=1")
+        return-url-base (or (::return-url request)
+                            (util/original-url request))
+        return-url (str return-url-base
+                        (if (.contains return-url-base "?") "&" "?")
+                        return-key "=1")
         auth-req (request-attribute-exchange
-                   (if realm
-                     (.authenticate mgr provider-info return-url realm)
-                     (.authenticate mgr provider-info return-url)))
+                  (if realm
+                    (.authenticate mgr provider-info return-url realm)
+                    (.authenticate mgr provider-info return-url)))
         discovery-key (str (java.util.UUID/randomUUID))]
     (swap! discovery-cache assoc discovery-key provider-info)
     (assoc (ring.util.response/redirect (.getDestinationUrl auth-req true))
