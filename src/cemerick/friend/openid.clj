@@ -39,17 +39,16 @@
                            (FetchRequest/createFetchRequest)
                            ax-props))))
 
-(def ^{:private true} return-key "auth_return")
+(defn- return-url
+  [request]
+  (or (::return-url request)
+      (util/original-url request)))
 
 (defn- handle-init
   [^ConsumerManager mgr discovery-cache user-identifier {:keys [session] :as request} realm]
   (let [discoveries (.discover mgr user-identifier)
         provider-info (.associate mgr discoveries)
-        return-url-base (or (::return-url request)
-                            (util/original-url request))
-        return-url (str return-url-base
-                        (if (.contains return-url-base "?") "&" "?")
-                        return-key "=1")
+        return-url (return-url request)
         auth-req (request-attribute-exchange
                   (if realm
                     (.authenticate mgr provider-info return-url realm)
@@ -89,7 +88,7 @@
 (defn- handle-return
   [^ConsumerManager mgr discovery-cache {:keys [params session] :as req} openid-config]
   (let [provider-info (get @discovery-cache (::openid-disc session))
-        url (util/original-url req)
+        url (return-url req)
         plist (ParameterList. params)
         credentials (build-credentials (.verify mgr url plist provider-info))]
     (swap! discovery-cache cache/evict (::openid-disc session))
@@ -118,7 +117,7 @@
             (handle-init mgr discovery-cache user-identifier request
                          (gets :realm openid-config (::friend/auth-config request)))
 
-            (contains? params return-key)
+            (contains? params "openid.return_to")
             (if-let [auth-map (handle-return mgr discovery-cache
                                              (assoc request :params params) openid-config)]
               (vary-meta auth-map merge {::friend/workflow :openid
