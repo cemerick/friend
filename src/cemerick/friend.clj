@@ -50,9 +50,10 @@
        (if (= (get-in request [:headers "x-forwarded-proto"]) (name scheme))
          (handler request)
          (redirect (util/original-url
-                    (assoc request
-                      :scheme scheme
-                      :server-port (scheme-mapping scheme))))))))
+                    (-> request
+                        (dissoc :headers)
+                        (assoc :scheme scheme
+                               :server-port (scheme-mapping scheme)))))))))
 
 
 (defn merge-authentication
