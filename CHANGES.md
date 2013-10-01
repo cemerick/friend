@@ -4,6 +4,8 @@
 
 This release contains a significant refactoring of the library to follow the
 interceptor pattern adopted by Ring 1.2.0 (see the note under "Misc" below).
+Note that this refactoring is _not_ a breaking change, either from an end-user
+or workflow author/maintainer standpoint.  
 
 Also, Friend now depends upon Ring 1.2.0 final.
 
