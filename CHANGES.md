@@ -1,5 +1,36 @@
 ## [Friend](http://github.com/cemerick/friend) changelog
 
+### `0.2.0`
+
+This release contains a significant refactoring of the library to follow the
+interceptor pattern adopted by Ring 1.2.0 (see the note under "Misc" below).
+
+Also, Friend now depends upon Ring 1.2.0 final.
+
+**Core API**
+
+* The `default-unauthenticated-handler` now properly retains the query string of
+  the initial requested unauthenticated URL (gh-68)
+
+**Workflows**
+
+* The OpenID workflow can now be used much more reliably behind reverse proxies
+  and load balancers:
+  * The `return_to` URL now automatically takes into account any
+    `x-forwarded-proto` header provided by your reverse proxy
+  * If your proxy/load balancer doesn't send `x-forwarded-proto` headers, then
+    you can use middleware to add an appropriate `return_to` URL to the request
+    going into the OpenID middleware, keyed under
+    `:cemerick.friend.openid/return-url` (gh-74)
+* The interactive-form workflow now properly picks up `username` parameter value
+  after a failed login attempt (gh-69)
+
+**Misc**
+
+* Friend's middlewares have been refactored internally to implement an
+  interceptor pattern, to match Ring's middlewares >= 1.2.0.  This makes Friend
+  suitable for use with e.g. Pedestal and similar frameworks. (gh-54)
+
 ### `0.1.5`
 
 Friend is now tracking Ring v1.2.0 betas, minimally requiring
