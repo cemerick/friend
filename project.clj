@@ -5,7 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.4.0"]
-                 [ring/ring-core "1.2.0-beta1"]
+                 [ring/ring-core "1.2.0"]
                  [slingshot "0.10.2"]
                  [robert/hooke "1.1.2"]
                  [org.clojure/core.incubator "0.1.1"]
@@ -30,8 +30,8 @@
                         "snapshots" {:url "https://clojars.org/repo/" :creds :gpg}}
   
   :profiles {:dev {:dependencies [[ring-mock "0.1.1"]
-                                  [compojure "1.0.1"]
-                                  [ring "1.1.0"]
+                                  [compojure "1.1.5"]
+                                  [ring "1.2.0"]
                                   [clj-http "0.3.6"]]}
              :sanity-check {:aot :all
                             :warn-on-reflection true
