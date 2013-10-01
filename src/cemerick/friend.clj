@@ -34,6 +34,7 @@
                                   :scheme scheme
                                   :server-port (scheme-mapping scheme))))))))
 
+; TODO should requires-scheme always take x-forwarded-proto into account?
 (defn requires-scheme-with-proxy
   "Ring middleware similar to friend/requires-scheme that should be
   able to handle things like load balancers in Amazon's elastic

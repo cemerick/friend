@@ -10,19 +10,21 @@
         val))
 
 (defn original-url
-  [{:keys [scheme server-name server-port uri query-string]}]
-  ;; NOTE: these values are incorrect when behind reverse proxies.
-  ;; It's not always possible to figure out the correct scheme/port
-  ;; so it's better to fix issues the mismatch causes in the calling
-  ;; code rather than here.
-  (str (name scheme) "://" server-name
-       (cond
-         (and (= :http scheme) (not= server-port 80)) (str \: server-port)
-         (and (= :https scheme) (not= server-port 443)) (str \: server-port)
-         :else nil)
-       uri
-       (when (seq query-string)
-         (str \? query-string))))
+  [{:keys [scheme server-name server-port uri query-string headers]}]
+  ;; If your proxy doesn't send x-forwarded-proto headers, then you'll need to
+  ;; set the return URL explicitly on the request going into the openid
+  ;; middleware...
+  (let [scheme (name (or (get headers "x-forwarded-proto") scheme))
+        port (cond
+               (get headers "x-forwarded-port") (str \: (get headers "x-forwarded-port"))
+               (and (= "http" scheme) (not= server-port 80)) (str \: server-port)
+               (and (= "https" scheme) (not= server-port 443)) (str \: server-port)
+               :else nil)]
+    (str scheme "://" server-name
+         port
+         uri
+         (when (seq query-string)
+           (str \? query-string)))))
 
 (defn resolve-absolute-uri
   [^String uri request]
