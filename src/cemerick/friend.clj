@@ -22,17 +22,22 @@
        (requires-scheme ring-handler :https {:https 8443})
 
    ...will redirect an http request to the same uri, but with an https
-   scheme and to port 8443."
+   scheme and to port 8443.
+
+   By default, a 302 (found) redirect will be performed. For SEO reasons
+   a 301 (moved permanently) redirect may be preferable, in which case
+   the the actual status code to use can be specified with
+   the :status option."
   ([handler scheme]
     (requires-scheme handler scheme *default-scheme-ports*))
-  ([handler scheme scheme-mapping]
+  ([handler scheme scheme-mapping & {:keys [status] :or {status 302}}]
     (fn [request]
       (if (= (:scheme request) scheme)
         (handler request)
-        ; TODO should this be permanent 301?
-        (redirect (util/original-url (assoc request
-                                  :scheme scheme
-                                  :server-port (scheme-mapping scheme))))))))
+        (-> (redirect (util/original-url (assoc request
+                                           :scheme scheme
+                                           :server-port (scheme-mapping scheme))))
+            (assoc :status status))))))
 
 ; TODO should requires-scheme always take x-forwarded-proto into account?
 (defn requires-scheme-with-proxy
@@ -45,15 +50,16 @@
   forge."
   ([handler scheme]
      (requires-scheme-with-proxy handler scheme *default-scheme-ports*))
-  ([handler scheme scheme-mapping]
+  ([handler scheme scheme-mapping & {:keys [status] :or {status 302}}]
      (fn [request]
        (if (= (get-in request [:headers "x-forwarded-proto"]) (name scheme))
          (handler request)
-         (redirect (util/original-url
-                    (-> request
-                        (dissoc :headers)
-                        (assoc :scheme scheme
-                               :server-port (scheme-mapping scheme)))))))))
+         (-> (redirect (util/original-url
+                        (-> request
+                            (dissoc :headers)
+                            (assoc :scheme scheme
+                                   :server-port (scheme-mapping scheme)))))
+             (assoc :status status))))))
 
 
 (defn merge-authentication
