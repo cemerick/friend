@@ -35,7 +35,7 @@ apps:
   HTTP Basic, and OpenId authentication, and makes it easy to:
   * implement and use other workflows
   * integrate app-specific user-credential checks
-* role-based authentication
+* role-based authorization
   * optionally uses Clojure's ad-hoc hierarchies to model hierarchical
     roles
 * `su` capabilities (a.k.a. "log in as"), enabling users to maintain
