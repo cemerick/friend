@@ -233,9 +233,8 @@ which contains a map to be called with a ring handler."
                 :workflows []}
                config)
         request (assoc request ::auth-config config)
-        workflow-result (->> (map #(% request) workflows)
-                          (filter boolean)
-                          first)]
+        workflow-result (some #(% request) workflows)]
+
       (if (and workflow-result (not (auth? workflow-result)))
         ;; workflow assumed to be a ring response
         workflow-result
