@@ -14,9 +14,12 @@
   ;; If your proxy doesn't send x-forwarded-proto headers, then you'll need to
   ;; set the return URL explicitly on the request going into the openid
   ;; middleware...
-  (let [scheme (name (or (get headers "x-forwarded-proto") scheme))
+  (let [forwarded-port (get headers "x-forwarded-port")
+        forwarded-proto (get headers "x-forwarded-proto")
+        scheme (name (or forwarded-proto scheme))
         port (cond
-               (get headers "x-forwarded-port") (str \: (get headers "x-forwarded-port"))
+               forwarded-port (str \: forwarded-port)
+               forwarded-proto nil
                (and (= "http" scheme) (not= server-port 80)) (str \: server-port)
                (and (= "https" scheme) (not= server-port 443)) (str \: server-port)
                :else nil)]
