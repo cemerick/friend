@@ -57,11 +57,15 @@
           (http-basic-deny realm request))
         {:status 400 :body "Malformed Authorization header for HTTP Basic authentication."}))))
 
+(defn- username
+  [form-params params]
+  (or (get form-params "username") (:username params "")))
+
 (defn interactive-login-redirect
   [{:keys [form-params params] :as request}]
   (ring.util.response/redirect
     (let [param (str "&login_failed=Y&username="
-                     (java.net.URLEncoder/encode (or (get form-params "username") (:username params ""))))
+                     (java.net.URLEncoder/encode (username form-params params)))
           ^String login-uri (-> request ::friend/auth-config :login-uri (#(str (:context request) %)))]
       (util/resolve-absolute-uri
         (str (if (.contains login-uri "?") login-uri (str login-uri "?"))
@@ -74,7 +78,7 @@
   (fn [{:keys [request-method params form-params] :as request}]
     (when (and (= (gets :login-uri form-config (::friend/auth-config request)) (req/path-info request))
                (= :post request-method))
-      (let [creds {:username (get form-params "username" "")
+      (let [creds {:username (username form-params params)
                    :password (:password params)}
             {:keys [username password]} creds]
         (if-let [user-record (and username password
