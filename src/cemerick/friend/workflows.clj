@@ -35,7 +35,7 @@
 (defn http-basic
   [& {:keys [credential-fn realm] :as basic-config}]
   (fn [{{:strs [authorization]} :headers :as request}]
-    (when authorization
+    (if authorization
       (if-let [[[_ username password]] (try (-> (re-matches #"\s*Basic\s+(.+)" authorization)
                                               ^String second
                                               (.getBytes "UTF-8")
@@ -55,7 +55,8 @@
                      {::friend/workflow :http-basic
                       ::friend/redirect-on-auth? false})
           (http-basic-deny realm request))
-        {:status 400 :body "Malformed Authorization header for HTTP Basic authentication."}))))
+        {:status 400 :body "Malformed Authorization header for HTTP Basic authentication."})
+      (http-basic-deny realm request))))
 
 (defn- username
   [form-params params]

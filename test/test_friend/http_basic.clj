@@ -40,4 +40,9 @@
     (is (= {:status 401, :headers {"Content-Type" "text/plain"
                                    "WWW-Authenticate" "Basic realm=\"friend-test\""}}
           ((http-basic :realm "friend-test" :credential-fn (constantly nil))
-            (header req "Authorization" auth))))))
+            (header req "Authorization" auth))))
+
+    (is (= {:status 401, :headers {"Content-Type" "text/plain"
+                                   "WWW-Authenticate" "Basic realm=\"friend-test\""}}
+          ((http-basic :realm "friend-test" :credential-fn (constantly nil))
+            req)))))
