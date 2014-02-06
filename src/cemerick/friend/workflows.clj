@@ -35,7 +35,7 @@
 (defn http-basic
   [& {:keys [credential-fn realm] :as basic-config}]
   (fn [{{:strs [authorization]} :headers :as request}]
-    (when authorization
+    (when (and authorization (re-matches #"\s*Basic\s+(.+)" authorization))
       (if-let [[[_ username password]] (try (-> (re-matches #"\s*Basic\s+(.+)" authorization)
                                               ^String second
                                               (.getBytes "UTF-8")
