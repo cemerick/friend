@@ -434,6 +434,33 @@ a given Ring handler:
 Note that `requires-scheme` is unrelated to the authentication,
 authorization, etc facilities in Friend, and can be used in isolation.
 
+### Nginx configuration
+
+If you are using Nginx to, e.g, terminate SSL, set the appropriate headers so that the Clojure backend can generate the correct `return-to` URLs for the openid and similar workflows:
+
+
+```nginx
+upstream jetty_upstream {
+  ip_hash;
+  server 127.0.0.1:8080;
+  keepalive 64;
+}
+
+server {
+  listen 443 ssl;
+  #...SSL termination config, &c.
+  
+  location / {
+    proxy_set_header host              $host;
+    proxy_set_header x-forwarded-for   $remote_addr;
+    proxy_set_header x-forwarded-host  $host;
+    proxy_set_header x-forwarded-proto $scheme;
+    proxy_set_header x-forwarded-port  $server_port;
+    proxy_pass http://jetty_upstream;
+  }
+}
+```
+
 ## TODO
 
 * run-as/sudo/multi-user login
