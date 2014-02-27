@@ -54,7 +54,8 @@
           (make-auth user-record
                      {::friend/workflow :http-basic
                       ::friend/redirect-on-auth? false})
-          (http-basic-deny realm request))
+          ((or (:unauthenticated-handler (::friend/auth-config request))
+               (partial http-basic-deny realm)) request))
         {:status 400 :body "Malformed Authorization header for HTTP Basic authentication."}))))
 
 (defn- username
