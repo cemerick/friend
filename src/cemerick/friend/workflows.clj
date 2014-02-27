@@ -61,6 +61,10 @@
   [form-params params]
   (or (get form-params "username") (:username params "")))
 
+(defn- password
+  [form-params params]
+  (or (get form-params "password") (:password params "")))
+
 (defn interactive-login-redirect
   [{:keys [form-params params] :as request}]
   (ring.util.response/redirect
@@ -79,7 +83,7 @@
     (when (and (= (gets :login-uri form-config (::friend/auth-config request)) (req/path-info request))
                (= :post request-method))
       (let [creds {:username (username form-params params)
-                   :password (:password params)}
+                   :password (password form-params params)}
             {:keys [username password]} creds]
         (if-let [user-record (and username password
                                   ((gets :credential-fn form-config (::friend/auth-config request))
