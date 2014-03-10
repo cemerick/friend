@@ -364,6 +364,9 @@ which contains a map to be called with a ring handler."
    ordering of your routes, or on 404 requests.  Using something like Compojure's
    `context` makes such arrangements easy to maintain."
   [handler roles]
+  (if (empty? roles)
+    (throw (IllegalArgumentException. "roles cannot be empty")))
+
   (fn [request]
     (if (authorized? roles (identity request))
       (handler request)
