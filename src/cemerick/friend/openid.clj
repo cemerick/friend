@@ -6,8 +6,7 @@
             ring.util.response
             [ring.util.request :as req]
             [clojure.core.cache :as cache])
-  (:use clojure.core.incubator
-        [cemerick.friend.util :only (gets)])
+  (:use [cemerick.friend.util :only (gets)])
   (:import (org.openid4java.consumer ConsumerManager VerificationResult
                            InMemoryConsumerAssociationStore
                            InMemoryNonceVerifier)
@@ -79,7 +78,7 @@
 
 (defn- build-credentials
   [^VerificationResult verification]
-  (when-let [identification (-?> verification .getVerifiedId .getIdentifier)]
+  (when-let [identification (some-> verification .getVerifiedId .getIdentifier)]
     (let [response (.getAuthResponse verification)]
       (reduce merge (cons {:identity identification} (gather-attr-maps response))))))
 

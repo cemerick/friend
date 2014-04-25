@@ -4,12 +4,11 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.0.0"
-  :dependencies [[org.clojure/clojure "1.4.0"]
+  :dependencies [[org.clojure/clojure "1.6.0"]
                  [ring/ring-core "1.2.0"]
                  [slingshot "0.10.2"]
                  [robert/hooke "1.1.2"]
-                 [org.clojure/core.incubator "0.1.1"]
-
+                 
                  [org.mindrot/jbcrypt "0.3m"]
 
                  ;; http-basic

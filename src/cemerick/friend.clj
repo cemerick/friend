@@ -2,8 +2,7 @@
   (:require [cemerick.friend.util :as util]
             [clojure.set :as set])
   (:use (ring.util [response :as response :only (redirect)])
-        [slingshot.slingshot :only (throw+ try+)]
-        [clojure.core.incubator :only (-?>)])
+        [slingshot.slingshot :only (throw+ try+)])
   (:refer-clojure :exclude (identity)))
 
 (def ^{:dynamic true} *default-scheme-ports* {:http 80 :https 443})
