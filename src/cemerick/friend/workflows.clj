@@ -53,7 +53,8 @@
                                 {:username username, :password password})]
           (make-auth user-record
                      {::friend/workflow :http-basic
-                      ::friend/redirect-on-auth? false})
+                      ::friend/redirect-on-auth? false
+                      ::friend/ensure-session false})
           (http-basic-deny realm request))
         {:status 400 :body "Malformed Authorization header for HTTP Basic authentication."}))))
 

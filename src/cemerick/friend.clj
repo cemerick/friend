@@ -184,9 +184,11 @@ Equivalent to (complement current-authentication)."}
   (try+
    (if-not new-auth?
      {:friend/handler-map (select-keys args [:request :catch-handler :auth])}
-     (when-let [response (or (redirect-new-auth workflow-result request)
-                             {:friend/handler-map (select-keys args [:request :catch-handler :auth])})]
-       (assoc response :friend/ensure-identity-request request)))
+     (let [response (or (redirect-new-auth workflow-result request)
+                      {:friend/handler-map (select-keys args [:request :catch-handler :auth])})]
+       (if (::ensure-session (meta workflow-result) true)
+         (assoc response :friend/ensure-identity-request request)
+         response)))
    (catch ::type error-map
      ;; TODO log unauthorized access at trace level
      (catch-handler
@@ -245,7 +247,12 @@ which contains a map to be called with a ring handler."
   (let [response-or-handler-map (authenticate-request request auth-config)
         response (if-let [handler-map (:friend/handler-map response-or-handler-map)]
                    (handler-request ring-handler handler-map) response-or-handler-map)]
-    (authenticate-response response request)))
+    (authenticate-response
+      (update-in response
+        [:friend/ensure-identity-request]
+        (fn [x]
+          (or x (:friend/ensure-identity-request response-or-handler-map))))
+      request)))
 
 (defn authenticate
   [ring-handler auth-config]

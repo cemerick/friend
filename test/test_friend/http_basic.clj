@@ -28,6 +28,7 @@
       (is (= {:identity "Aladdin"} auth))
       (is (= (meta auth) {::friend/workflow :http-basic
                           ::friend/redirect-on-auth? false
+                          ::friend/ensure-session false
                           :type ::friend/auth})))
 
     (testing "empty usernames and passwords are per the spec"
