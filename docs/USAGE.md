@@ -1,0 +1,326 @@
+## Usage
+
+How you use Friend will vary, sometimes significantly, depending on the
+authentication providers you use and the authorization policy/ies you want to
+enforce.  A generic example of typical usage of Friend is below, but the best
+way to become familiar with Friend and how it can be used would be to go check
+out
+
+### [_http://friend-demo.herokuapp.com_](http://friend-demo.herokuapp.com)
+
+…a collection of tiny demonstration apps using Friend.  It should be easy to
+find the one(s) that apply to your situation, and go straight to its source so
+you can see how all the pieces fit together.
+
+-----
+
+Here's probably the most self-contained Friend usage possible:
+
+```clojure
+(ns your.ring.app
+  (:require [cemerick.friend :as friend]
+            (cemerick.friend [workflows :as workflows]
+                             [credentials :as creds])))
+
+; a dummy in-memory user "database"
+(def users {"root" {:username "root"
+                    :password (creds/hash-bcrypt "admin_password")
+                    :roles #{::admin}}
+            "jane" {:username "jane"
+                    :password (creds/hash-bcrypt "user_password")
+                    :roles #{::user}}})
+
+(def ring-app ; ... assemble routes however you like ...
+  )
+
+(def secured-app
+  (-> ring-app
+    (friend/authenticate {:credential-fn (partial creds/bcrypt-credential-fn users)
+                          :workflows [(workflows/interactive-form)]})
+    ; ...required Ring middlewares ...
+    ))
+```
+
+We have an unadorned (and unsecured) Ring application (`ring-app`, which
+can be any Ring handler), and then the usage of Friend's `authenticate`
+middleware.  This is where all of the authentication work will be done,
+with the return value being a secured Ring application (`secured-app`),
+the requests to which are subject to the configuration provided to
+`authenticate` and the authorization contexts that are defined within
+`ring-app` (which we'll get to shortly).
+
+(If you're newer to Clojure, you might not recognize the tokens prefixed with
+two colons [e.g. `::admin`].  These are auto-namespaced keywords; in the example
+above, `::admin` expands to `:your.ring.app/admin`.)
+
+### Authentication
+
+There are two key abstractions employed during authentication:
+[workflow](#workflows)
+and
+[credential](#credential-functions-and-authentication-maps)
+functions.  The example above defines a single workflow — one supporting
+the `POST`ing of `:username` and `:password` parameters to (by default)
+`/login` — which will discover the specified `:credential-fn` and use it
+to validate submitted credentials.  The `bcrypt-credential-fn` function
+verifies a submitted map of `{:username "..." :password "..."}`
+credentials against one loaded from another function based on the
+`:username` value; in this case, we're just looking up the username in a
+fixed Clojure map that has username, (bcrypted) password, and roles
+entries.  If a submitted set of credentials matches those in the
+authoritative store, the latter are returned (_sans_ `:password`) as an
+_authentication map_.
+
+(Each workflow can have its own local configuration — including a
+credential function — that is used in preference to the configuration
+specified at the `authenticate` level.)
+
+The `authenticate` middleware runs every incoming request through each
+of the workflows with which it is created.  It further handles things
+like retaining authentication details in the user session (by default)
+and managing the redirection of users when they attempt to access
+protected resources without the requisite authentication or
+authorization (first to the start of an authentication workflow, e.g.
+`GET` of a `/login` URI, and then back to the originally-requested
+protected resource once the authentication workflow is completed).
+
+(Note that Friend itself requires some core Ring middlewares: `params`,
+`keyword-params` and `nested-params`.  Most workflows will additionally
+require `session` in order to support post-authentication redirection to
+previously-unauthorized resources, retention of tokens and nonces for
+workflows like OpenId and oAuth, etc.  HTTP Basic is the only provided
+workflow that does not require `session` middleware.)
+
+### Workflows
+
+Individual authentication methods (e.g., form-based auth, HTTP Basic, OpenID,
+oAuth, etc.) are implemented as _workflows_ in Friend.  A workflow is a
+regular Ring handler function, except that a workflow function can _opt_
+to return an _authentication map_ instead of a Ring response if a
+request is authenticated.  A diagram may help:
+
+![](https://github.com/cemerick/friend/raw/master/docs/assets/workflow.png)
+
+You can define any number of workflows in a `:workflows` kwarg to
+`authenticate`.  Incoming requests are always run through the configured
+workflows prior to potentially being passed along to the secured Ring
+application.
+
+If a workflow returns an authentication map, then the `authenticate`
+middleware will either:
+
+* carry on processing the request if the workflow allows for credentials
+  to be provided in requests to any resource (i.e. HTTP Basic); control
+  of this is entirely up to each workflow, and will be described later.
+* redirect the user agent to a secured resource that it was previously
+  barred from accessing via Friend's authorization machinery
+
+If a workflow returns a Ring response, then that response is sent back
+to the user agent straight away (after some bookkeeping by the
+`authenticate` middleware to preserve session states and such).  This
+makes it possible for a workflow to control a "local" dataflow between
+itself, the user agent, and any necessary external authorities (e.g. by
+redirecting a user agent to an OpenId endpoint, performing token
+exchange in the case of oAuth, etc., eventually returning a complete
+authentication map that will allow the user agent to proceed on its
+desired vector).
+
+### Credential functions and authentication maps
+
+Workflows use a _credential function_ to verify the credentials provided
+to them via requests.  Credential functions can be specified either as a
+`:credential-fn` option to `cemerick.friend/authenticate`, or often as
+an (overriding) `:credential-fn` option to individual workflow
+functions.
+
+All credential functions take a single argument, a map containing the
+available credentials that additionally contains a
+`:cemerick.friend/workflow` slot identifying which workflow has produced
+the credential.  For example, the default form-based authentication
+credential map looks like this:
+
+```clojure
+{:username "...", :password "...", :cemerick.friend/workflow :form}
+```
+
+HTTP Basic credentials are much the same, but with a workflow value of
+`:http-basic`, etc.  Different workflows may have significantly different
+credential maps (e.g. an OpenID workflow does not provide username and
+password, but rather a token returned by an OpenID provider along with
+potentially some number of "attributes" like the user's name, email
+address, default language, etc.), and unique credential verification
+requirements (again, contrast the simple username/password verification
+of form or HTTP Basic credentials and OpenId, which, in
+general, when presented with unknown credentials, should _register_ the
+indicated identity rather than verifying it).
+
+In summary, the contract of what exactly must be in the map provided to
+credential functions is entirely at the discretion of each workflow
+function, as is the semantics of the credential function.
+
+If a map of credentials is verified by a credential function, it should
+return a _authentication map_ that aggregates all authentication and
+authorization information available for the identified user.  This map
+may contain many entries, depending upon the authentication information
+that is relevant for the workflow in question and the user data relevant
+to the application, but two entries are privileged:
+
+* `:identity` (**required**) corresponds with e.g. the username in a
+form or HTTP Basic authentication, an oAuth token, etc.; this value
+_must_ be unique across all users within the application
+* `:roles`, an optional collection of values enumerating the roles for
+which the user is authorized, or a function returning the same.
+
+_If a map of credentials is found to be invalid, the credential function must
+return nil._
+
+### Authorization
+
+As is, the example above doesn't do a lot: users can opt to be
+authenticated, but we've not described any kind of security policy,
+identified routes or functions or forms that require particular roles to
+access, and so on.  This is where authorization mechanisms come into
+play.
+
+While Friend has a single point of authentication — the `authenticate`
+middleware — it has many different options for restricting access to
+particular resources or code:
+
+* `authenticated` is a macro that requires that the current user must be
+  authenticated
+* `authorized?` is a predicate that returns true only if the current
+  user (as determined via the _authentication map_ returned by a
+workflow) possesses the specified _roles_.  You'll usually want to use
+one of the higher-level facilities (keep reading), but `authorized?` may
+come in handy if access to a certain resource or operation cannot be
+specified declaratively.
+
+The rest of the authorization utilities use `authorized?` to determine
+whether a user may gain access to whatever the utility is protecting:
+
+* `authorize` is a macro that guards any body of code from
+being executed within a thread associated with a user that is not
+`authorized?`
+* `wrap-authorize` is a Ring middleware that only allows requests to
+pass through to the wrapped handler if their associated user is
+`authorized?`
+* `authorize-hook` is a function intended to be used with the [Robert
+Hooke](https://github.com/technomancy/robert-hooke/) library that
+allows you to place authorization guards around functions defined in
+code you don't control.
+
+Here's an extension of the example above that adds some actual routes
+(using Compojure) and handler that require authentication:
+
+```clojure
+(use '[compojure.core :as compojure :only (GET ANY defroutes)])
+
+(defroutes user-routes
+  (GET "/account" request (page-bodies (:uri request)))
+  (GET "/private-page" request (page-bodies (:uri request))))
+
+(defroutes ring-app
+  ;; requires user role
+  (compojure/context "/user" request
+    (friend/wrap-authorize user-routes #{::user}))
+
+  ;; requires admin role
+  (GET "/admin" request (friend/authorize #{::admin}
+                          #_any-code-requiring-admin-authorization
+                          "Admin page."))
+
+  ;; anonymous
+  (GET "/" request "Landing page.")
+  (GET "/login" request "Login page.")
+  (friend/logout (ANY "/logout" request (ring.util.response/redirect "/"))))
+```
+
+This should be easy to grok, but some highlights:
+
+* Authorization checks generally should happen _after_ routing.  This is
+  usually easily accomplished by segregating handlers as you might do so
+anyway, and then using something like Compojure's `context` utility to
+wire them up into a common URI segment.
+* Alternatively, you can use `authorize` to put authorization guards
+  around any code, anywhere.
+* The `logout` middleware can be applied to any Ring handler, and will
+  remove all authentication information from the session assuming a
+  non-`nil` response from the wrapped handler.
+
+Note that, so far, all of the authorization checks will be completely
+"strict", e.g. the admin user won't have access to `/user` because it
+requires the `::user` role.  This is where hierarchies are unreasonably
+helpful.
+
+#### Hierarchical roles (/ht `derive`, `isa?`, et al.)
+
+The foundational `authorized?` predicate uses `isa?` to check if any of
+the current user's roles match one of those specified.  This means that
+you can take advantage of Clojure's hierarchies via `derive` to
+establish relationships between roles.  e.g., this is all that is
+required to give a user with the `::admin` role all of the privileges of
+a user with the `::user` role:
+
+```clojure
+(derive ::admin ::user)
+```
+
+Of course, you are free to construct your role hierarchy(ies) however
+you like, to suit your application and your security requirements.
+
+### Channel security
+
+_Channel security_ is the redirection of requests for a given resource
+through a specific channel, i.e. requiring that logins or a payment
+workflow is performed over HTTPS instead over HTTP.
+
+`requires-scheme` is Ring middleware that enforces channel security for
+a given Ring handler:
+
+```clojure
+(use '[cemerick.friend :only (requires-scheme *default-scheme-ports*)])
+
+; HTTP requests routed to https-routes will be redirected to the
+; corresponding HTTPS URL on the default port
+(def https-routes (requires-scheme routes :https))
+
+; HTTP requests routed to custom-https-port-routes be redirected to the
+; corresponding HTTPS URL on port 8443
+(def custom-https-port-routes (requires-scheme routes :https {:https 8443}))
+
+; alternative default ports for HTTP and HTTPS may be bound dynamically
+; to simplify configuration of multiple routes
+(binding [*default-scheme-ports* {:http 8080 :https 8443}]
+  (def http-routes (requires-scheme routes :http))
+  (def https-routes (requires-scheme routes :https)))
+```
+
+Note that `requires-scheme` is unrelated to the authentication,
+authorization, etc facilities in Friend, and can be used in isolation.
+
+### Nginx configuration
+
+If you are using Nginx to, e.g, terminate SSL, set the appropriate headers so that the Clojure backend can generate the correct `return-to` URLs for the openid and similar workflows:
+
+
+```nginx
+upstream jetty_upstream {
+  ip_hash;
+  server 127.0.0.1:8080;
+  keepalive 64;
+}
+
+server {
+  listen 443 ssl;
+  #...SSL termination config, &c.
+  
+  location / {
+    proxy_set_header host              $host;
+    proxy_set_header x-forwarded-for   $remote_addr;
+    proxy_set_header x-forwarded-host  $host;
+    proxy_set_header x-forwarded-proto $scheme;
+    proxy_set_header x-forwarded-port  $server_port;
+    proxy_pass http://jetty_upstream;
+  }
+}
+```
