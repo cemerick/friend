@@ -9,8 +9,7 @@
             [ring.util.response :as resp]
             (compojure [handler :as handler]
                        [route :as route]))
-  (:use [compojure.core :as compojure :only (GET POST ANY defroutes)]
-        [clojure.core.incubator :only (-?>)]))
+  (:use [compojure.core :as compojure :only (GET POST ANY defroutes)]))
 
 
 (def page-bodies {"/login" "Login page here."
@@ -85,7 +84,7 @@
                                  (reset! missles-fired? "shouldn't happen")))
   
   (GET "/view-openid" request
-       (str "OpenId authentication? " (-?> request friend/identity friend/current-authentication pr-str)))
+       (str "OpenId authentication? " (some-> request friend/identity friend/current-authentication pr-str)))
   
   ;; FIN
   (route/not-found "404"))
