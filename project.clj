@@ -4,7 +4,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.0.0"
-  :dependencies [[org.clojure/clojure "1.4.0"]
+  :dependencies [[org.clojure/clojure "1.6.0"]
                  [ring/ring-core "1.2.0"]
                  [slingshot "0.10.2"]
                  [org.clojure/core.incubator "0.1.1"]
@@ -36,9 +36,10 @@
              :sanity-check {:aot :all
                             :warn-on-reflection true
                             :compile-path "target/sanity-check-aot"}
-             :1.3 {:dependencies [[org.clojure/clojure "1.3.0"]]}
-             :1.5 {:dependencies [[org.clojure/clojure "1.5.1"]]}}
-  :aliases  {"all" ["with-profile" "dev,1.2:dev,1.3:dev:dev,1.5"]
+             :1.3 [:dev {:dependencies [[org.clojure/clojure "1.3.0"]]}]
+             :1.4 [:dev {:dependencies [[org.clojure/clojure "1.4.0"]]}]
+             :1.5 [:dev {:dependencies [[org.clojure/clojure "1.5.1"]]}]}
+  :aliases  {"all" ["with-profile" "1.3:1.4:1.5:dev"]
              "sanity-check" ["do" "clean," "with-profile" "sanity-check" "compile"]})
 
 ;; see:
