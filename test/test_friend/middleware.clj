@@ -1,7 +1,7 @@
 (ns test-friend.middleware
   (:use clojure.test
-        [compojure.core :only (defroutes GET)])
-  (:require [cemerick.friend :refer [wrap-authorize]]))
+        [compojure.core :only (defroutes GET)]
+        [cemerick.friend :only (wrap-authorize)]))
 
 (defroutes ^{:private true} routes
   (GET "/path" request "Response"))
