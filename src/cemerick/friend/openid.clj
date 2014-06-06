@@ -15,22 +15,19 @@
            (org.openid4java.message.ax AxMessage FetchRequest FetchResponse)
            (org.openid4java.message.sreg SRegMessage SRegRequest SRegResponse)))
 
-(def ^{:private true} ax-props (atom
-                                {"country" "http://axschema.org/contact/country/home"
-                                 "email" "http://axschema.org/contact/email"
-                                 "firstname" "http://axschema.org/namePerson/first"
-                                 "language" "http://axschema.org/pref/language"
-                                 "lastname" "http://axschema.org/namePerson/last"
-                                 }))
+(def default-ax-props {"country" "http://axschema.org/contact/country/home"
+                       "email" "http://axschema.org/contact/email"
+                       "firstname" "http://axschema.org/namePerson/first"
+                       "language" "http://axschema.org/pref/language"
+                       "lastname" "http://axschema.org/namePerson/last"})
 
 (def ^{:private true} sreg-attrs
   ["nickname", "email", "fullname", "dob",
    "gender", "postcode", "country", "language", "timezone"])
 
 (defn- request-attribute-exchange
-  [attr-ex ^AuthRequest auth-req]
+  [ax-props ^AuthRequest auth-req]
   ;; might as well carpet-bomb for attributes
-  (swap! ax-props merge attr-ex)
   (doto auth-req
     (.addExtension (reduce #(doto % (.addAttribute %2 true))
                            (SRegRequest/createFetchRequest)
@@ -39,7 +36,7 @@
                              (.addAttribute fr k v true)
                              fr)
                            (FetchRequest/createFetchRequest)
-                           @ax-props))))
+                           ax-props))))
 
 (defn- return-url
   [request]
@@ -47,11 +44,11 @@
       (util/original-url request)))
 
 (defn- handle-init
-  [^ConsumerManager mgr discovery-cache user-identifier {:keys [session] :as request} realm attr-ex]
+  [^ConsumerManager mgr discovery-cache user-identifier {:keys [session] :as request} realm ax-props]
   (let [discoveries (.discover mgr user-identifier)
         provider-info (.associate mgr discoveries)
         return-url (return-url request)
-        auth-req (request-attribute-exchange attr-ex
+        auth-req (request-attribute-exchange ax-props
                   (if realm
                     (.authenticate mgr provider-info return-url realm)
                     (.authenticate mgr provider-info return-url)))
@@ -61,9 +58,9 @@
       :session (assoc session ::openid-disc discovery-key))))
 
 (defn- gather-attr-maps
-  [^Message response]
+  [^Message response ax-props]
   (for [[type ext-uri ext-class attr-keys] [[::sreg SRegMessage/OPENID_NS_SREG SRegResponse sreg-attrs]
-                                            [::ax AxMessage/OPENID_NS_AX FetchResponse (keys @ax-props)]]]
+                                            [::ax AxMessage/OPENID_NS_AX FetchResponse (keys ax-props)]]]
     ;; SReg fails for wordpress and other providers because they don't sign the attribute values
     ;; http://en.forums.wordpress.com/topic/wordpresscom-openid-endpoint-does-not-sign-sreg-attributes
     (when-let [ext (try
@@ -80,10 +77,10 @@
           (into ^{:type type} {}))))))
 
 (defn- build-credentials
-  [^VerificationResult verification]
+  [^VerificationResult verification {:keys [attribute-exchange-properties]}]
   (when-let [identification (-?> verification .getVerifiedId .getIdentifier)]
     (let [response (.getAuthResponse verification)]
-      (reduce merge (cons {:identity identification} (gather-attr-maps response))))))
+      (reduce merge (cons {:identity identification} (gather-attr-maps response attribute-exchange-properties))))))
 
 ;; we end up leaving a string in the user session, but at least it's not an unreadable,
 ;; unprintable org.openid4java.discovery.DiscoveryInformation object
@@ -92,17 +89,18 @@
   (let [provider-info (get @discovery-cache (::openid-disc session))
         url (return-url req)
         plist (ParameterList. params)
-        credentials (build-credentials (.verify mgr url plist provider-info))]
+        credentials (build-credentials (.verify mgr url plist provider-info) openid-config)]
     (swap! discovery-cache cache/evict (::openid-disc session))
     (or ((gets :credential-fn openid-config (::friend/auth-config req)) credentials)
         ((gets :login-failure-handler openid-config (::friend/auth-config req)) req))))
 
 (defn workflow
   [& {:keys [openid-uri credential-fn user-identifier-param max-nonce-age
-             login-failure-handler realm consumer-manager attribute-exchange]
+             login-failure-handler realm consumer-manager attribute-exchange-properties]
       :or {openid-uri "/openid"
            user-identifier-param "identifier"
-           max-nonce-age 60000}
+           max-nonce-age 60000
+           attribute-exchange-properties default-ax-props}
       :as openid-config}]
   (let [mgr (or consumer-manager
                 (doto (ConsumerManager.)
@@ -117,7 +115,7 @@
           (cond
             user-identifier
             (handle-init mgr discovery-cache user-identifier request
-                         (gets :realm openid-config (::friend/auth-config request)) attribute-exchange)
+                         (gets :realm openid-config (::friend/auth-config request)) attribute-exchange-properties)
 
             (contains? params "openid.return_to")
             (if-let [auth-map (handle-return mgr discovery-cache
