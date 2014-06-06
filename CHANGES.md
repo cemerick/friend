@@ -1,5 +1,23 @@
 ## [Friend](http://github.com/cemerick/friend) changelog
 
+### [`0.2.1`](https://github.com/cemerick/friend/issues?milestone=7&page=1&state=closed)
+
+* Added `:cemerick.friend/ensure-session` as an optional slot workflows can add
+  to the metadata on authentication maps they return. By default, Friend will
+  update (or set anew) the Ring session when a user is authenticated,
+  redirecting them to where they were originally headed before hitting an
+  authentication requirement. By setting `:cemerick.friend/ensure-session` and
+  `:cemerick.friend/redirect-on-auth?` to `false`, the user will not be
+  redirected, and the session will not be set. This addresses the use cases of
+  both the HTTP Basic workflow, as well as use cases where a request is made
+  simply to establish authentication without a redirect, but while retaining the
+  session-setting behaviour. (gh-83)
+* Fix the HTTP Basic workflow so that non-Basic authentication mechanisms that
+  use the `Authorization` HTTP header can be used (gh-85)
+* Workflows are now only ever run as needed (gh-90)
+* Port numbers are no longer set if `X-Forwarded-Proto` is present in the
+  original request (gh-84)
+
 ### `0.2.0`
 
 Friend now depends upon Ring 1.2.0 final.  This means (due to the transitive
