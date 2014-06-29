@@ -2,6 +2,7 @@
   (:require [cemerick.friend.util :as util]
             [clojure.set :as set])
   (:use (ring.util [response :as response :only (redirect)])
+        (ring.middleware [session :as session :only (wrap-session)])
         [slingshot.slingshot :only (throw+ try+)]
         [clojure.core.incubator :only (-?>)])
   (:refer-clojure :exclude (identity)))
@@ -129,6 +130,19 @@ any funny-business related to the dynamic binding of `*identity*`."
     (let [identity (or (identity identity-or-ring-map)
                      identity-or-ring-map)]
       (-> identity :authentications (get (:current identity))))))
+
+(defn switch-user
+  "Simply updates current authentication. Receives a ring
+  handler and a function that returns a user when it receives the
+  request.
+
+  This function assumes that you somehow already have several
+  authentications."
+  [handler current-auth-fn]
+  (fn [request]
+    (if-let [response ((wrap-session handler) request)]
+      (assoc-in response [:session ::identity :current]
+                (current-auth-fn request)))))
 
 (def ^{:doc "Returns true only if the provided request/response has no identity.
 Equivalent to (complement current-authentication)."}

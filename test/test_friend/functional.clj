@@ -161,6 +161,17 @@
     (is (= (page-bodies "/")) (http/get (url "/logout")))
     (is (= (page-bodies "/login") (:body (http/get (url "/admin")))))))
 
+; su
+(deftest alternate-users
+  (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
+    (http/post (url "/login") {:form-params {:username "root" :password "admin_password"}})
+    (is (= "root" (:body (http/get (url "/echo-identity")))))  
+    (http/post (url "/login") {:form-params {:username "jane" :password "user_password"}})
+    (is (= "jane" (:body (http/get (url "/echo-identity")))))
+    (http/post (url "/switch-user") {:form-params {:user "root"}})
+    (is (= "root" (:body (http/get (url "/echo-identity")))))  
+    (http/post (url "/switch-user") {:form-params {:user "jane"}})
+    (is (= "jane" (:body (http/get (url "/echo-identity")))))))
+
 ;;;; TODO
 ; requires-scheme
-; su
