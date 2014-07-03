@@ -5,6 +5,7 @@
             clojure.walk
             ring.util.response
             [ring.util.request :as req]
+            [ring.util.codec :as codec]
             [clojure.core.cache :as cache])
   (:use clojure.core.incubator
         [cemerick.friend.util :only (gets)])
@@ -95,6 +96,16 @@
     (or ((gets :credential-fn openid-config (::friend/auth-config req)) credentials)
         ((gets :login-failure-handler openid-config (::friend/auth-config req)) req))))
 
+(defn- remove-user-identifier-param [req user-identifier-param-name]
+  (letfn [(remove-user-identifier [req k]
+            (update-in req [k] dissoc user-identifier-param-name))
+          (rebuild-query-string [req]
+            (assoc req :query-string (codec/form-encode (:query-params req))))]
+    (-> req
+        (remove-user-identifier :query-params)
+        (remove-user-identifier :params)
+        (rebuild-query-string))))
+
 (defn workflow
   [& {:keys [openid-uri credential-fn user-identifier-param max-nonce-age
              login-failure-handler realm consumer-manager]
@@ -110,8 +121,10 @@
     (fn [{:keys [ request-method params] :as request}]
       (when (=  (req/path-info request) openid-uri)
         (let [params (clojure.walk/stringify-keys params)
-              user-identifier (and (= request-method :post)
-                                   (get params (name user-identifier-param)))]
+              user-identifier-param (name user-identifier-param)
+              user-identifier (and (#{:post :get} request-method)
+                                   (get params user-identifier-param))
+              request (remove-user-identifier-param request user-identifier-param)]
           (cond
             user-identifier
             (handle-init mgr discovery-cache user-identifier request
