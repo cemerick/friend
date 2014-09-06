@@ -15,15 +15,14 @@
                  [commons-codec "1.6"]
 
                  ;; openid
-                 [org.clojure/core.cache "0.6.2"]
+                 [org.clojure/core.cache "0.6.3"]
                  [org.openid4java/openid4java-nodeps "0.9.6"
                   ; the openid4java artifact refers to a now-disappeared guice repo that
                   ; was previously hosted via google code svn :X
                   :exclusions [com.google.code.guice/guice]]
                  [com.google.inject/guice "2.0"]
                  [net.sourceforge.nekohtml/nekohtml "1.9.10"]
-                 ; need different httpclient rev for https://issues.apache.org/jira/browse/HTTPCLIENT-1118
-                 [org.apache.httpcomponents/httpclient "4.2.1"]]
+                 [org.apache.httpcomponents/httpclient "4.3.5"]]
   
   :deploy-repositories {"releases" {:url "https://clojars.org/repo/" :creds :gpg}
                         "snapshots" {:url "https://clojars.org/repo/" :creds :gpg}}
