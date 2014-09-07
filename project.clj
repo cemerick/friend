@@ -7,7 +7,6 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [ring/ring-core "1.2.0"]
                  [slingshot "0.10.2"]
-                 [org.clojure/core.incubator "0.1.1"]
 
                  [org.mindrot/jbcrypt "0.3m"]
 
