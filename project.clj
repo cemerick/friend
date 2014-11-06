@@ -22,7 +22,7 @@
                  [com.google.inject/guice "2.0"]
                  [net.sourceforge.nekohtml/nekohtml "1.9.10"]
                  ; need different httpclient rev for https://issues.apache.org/jira/browse/HTTPCLIENT-1118
-                 [org.apache.httpcomponents/httpclient "4.2.1"]]
+                 [org.apache.httpcomponents/httpclient "4.3.5"]]
   
   :deploy-repositories {"releases" {:url "https://clojars.org/repo/" :creds :gpg}
                         "snapshots" {:url "https://clojars.org/repo/" :creds :gpg}}
@@ -34,8 +34,10 @@
                                   [clj-http "1.0.1"]]}
              :sanity-check {:aot :all
                             :warn-on-reflection true
-                            :compile-path "target/sanity-check-aot"}}
-  :aliases  {"sanity-check" ["do" "clean," "with-profile" "sanity-check" "compile"]})
+                            :compile-path "target/sanity-check-aot"}
+             :1.5 [:dev {:dependencies [[org.clojure/clojure "1.5.1"]]}]}
+  :aliases  {"all" ["with-profile" "1.5:dev"]
+             "sanity-check" ["do" "clean," "with-profile" "sanity-check" "compile"]})
 
 ;; see:
 ;; http://static.springsource.org/spring-security/site/docs/3.1.x/reference/springsecurity-single.html#overall-architecture
