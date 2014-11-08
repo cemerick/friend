@@ -34,7 +34,7 @@
           :let [resp (http/get url)]]
     (is (http/success? resp))
     (is (= (page-bodies uri) (:body resp))))
-  
+
   (let [api-resp (http/get (url "/free-api") {:as :json})]
     (is (http/success? api-resp))
     (is (= {:data 99} (:body api-resp)))))
@@ -64,25 +64,69 @@
   (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
     (is (= (page-bodies "/login") (:body (http/get (url "/user/account?query-string=test")))))
     (let [resp (http/post (url "/login")
-                 {:form-params {:username "jane" :password "user_password"}})]
+                 {:form-params {:username "jane" :password "user_password"} :follow-redirects false})]
       ; ensure that previously-requested page is redirected to upon redirecting authentication
-      ; clj-http *should* redirect us, but isn't yet; working on it: 
+      ; clj-http *should* redirect us, but isn't yet; working on it:
       ; https://github.com/dakrone/clj-http/issues/57
       (is (http/redirect? resp))
       (is (= (url "/user/account?query-string=test") (-> resp :headers (get "location")))))
     (check-user-role-access)
     (is (= {:roles ["test-friend.mock-app/user"]} (:body (http/get (url "/echo-roles") {:as :json}))))
-    
+
     ; deny on admin role
     (try+
       (http/get (url "/admin"))
       (assert false) ; should never get here
       (catch [:status 403] _
         (is true)))
-    
+
     (testing "logout blocks access to privileged routes"
       (is (= (page-bodies "/") (:body (http/get (url "/logout")))))
       (is (= (page-bodies "/login") (:body (http/get (url "/user/account"))))))))
+
+(deftest user-login-with-remember-me-cookie-set
+  (let [cs (clj-http.cookies/cookie-store)]
+    ;;ensure the user account is correctly protected by redirecting to the login page
+    (is (= (page-bodies "/login") (:body (http/get (url "/user/account?query-string=test") {:cookie-store cs}))))
+    ;;login WITH remember me (get a ring-session cookie for binding the client to the server session storing the ::identity)
+    (is (= (url "/user/account?query-string=test") (-> (http/post (url "/login")
+                                                                  {:form-params {:username "jane"
+                                                                                 :password "user_password"
+                                                                                 :remember-me false}
+                                                                   :cookie-store cs
+                                                                   :follow-redirects false}) :headers (get "location"))))
+    ;;now we can get the user account page correctly as we are loggued
+    (is (= (page-bodies "/user/account") (:body (http/get (url "/user/account?query-string=test") {:cookie-store cs}))))
+    ;;now we logout completely
+    (is (= (page-bodies "/")) (http/get (url "/logout") {:cookie-store cs}))
+    ;;ensure that we correctly logout
+    (is (= (page-bodies "/login") (:body (http/get (url "/user/account?query-string=test") {:cookie-store cs}))))
+    ;; now login WITH remember-me after clearing the cookie store
+    (.clear cs)
+    (http/post (url "/login") {:form-params {:username "jane" :password "user_password" :remember-me true}
+                               :cookie-store cs
+                               :follow-redirects false})
+    ;;verify the remember-me cookie is present
+    (is (not-empty (get (clj-http.cookies/get-cookies cs) "remember-me")))
+    (are [uri] (is (= (page-bodies uri) (:body (http/get (url uri) {:cookie-store cs})))) "/user/account" "/user/private-page")
+    (is (= {:roles ["test-friend.mock-app/user"]} (:body (http/get (url "/echo-roles") {:as :json :cookie-store cs}))))
+    ;;then reset the session only with a dedicated request
+    ;;not logging out as logout is expected to reset the remember-me token from server
+    (http/post (url "/reset-session") {:cookie-store cs})
+    ;;then verify we can actually get a protected page with only a remember-me cookie
+    (is (= (page-bodies "/user/account") (:body (http/get (url "/user/account?query-string=test") {:cookie-store cs}))))
+    ;;and get a login page if we do not provide the remember-me cookie
+    (is (= (page-bodies "/login") (:body (http/get (url "/user/account?query-string=test")))))
+    ;;now logout to verify the remember-me cookie is correctly invalidated
+    (testing "logout blocks access to privileged routes"
+       (is (= (page-bodies "/") (:body (http/get (url "/logout") {:cookie-store cs}))))
+       ;;(is (= (page-bodies "/login") (:body (http/get (url "/user/account") {:cookie-store cs}))))
+      )
+    ;;TODO check expiration time for cookie (either by issuing a very short lived cookie or indirecting the "now" fn on server in the future)
+    ;;check cookie value modification invalidate the authentication
+    ;; Deny on admin role
+    ))
+
 
 (deftest session-integrity
   (testing (str "that session state set elsewhere is not disturbed by friend's operation, "
@@ -100,7 +144,7 @@
         (is (= "auth-data" (post-session-data "auth-data")))
         (is (= "auth-data" (get-session-data)))
         (check-user-role-access)
-        
+
         (http/get (url "/logout"))
         (let [should-be-login-redirect (http/get (url "/user/account")
                                                  {:follow-redirects false})]
@@ -118,7 +162,7 @@
       (assert false) ; should never get here
       (catch [:status 403] resp
         (is (= "Sorry, you do not have access to this resource." (:body resp)))))
-    
+
     (http/post (url "/login") {:form-params {:username "root" :password "admin_password"}})
     (is (= (page-bodies "/hook-admin")) (http/get (url "/hook-admin")))))
 
@@ -135,7 +179,7 @@
 (deftest admin-login
   (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
     (is (= (page-bodies "/login") (:body (http/get (url "/admin")))))
-    
+
     (http/post (url "/login") {:form-params {:username "root" :password "admin_password"}})
     (is (= (page-bodies "/admin")) (http/get (url "/admin")))
     (check-user-role-access)
@@ -151,16 +195,19 @@
   (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
     (is (= (page-bodies "/login") (:body (http/get (url "/admin")))))
     (http/post (url "/login") {:form-params {:username "root" :password "admin_password"}})
-    
+
     (try+
       (http/get (url "/wat"))
       (assert false)
       (catch [:status 404] e))
     (is (= (page-bodies "/admin")) (http/get (url "/admin")))
-    
+
     (is (= (page-bodies "/")) (http/get (url "/logout")))
     (is (= (page-bodies "/login") (:body (http/get (url "/admin")))))))
 
 ;;;; TODO
 ; requires-scheme
 ; su
+(defn test-ns-hook []
+  ;;(run-test-app #'mock-app user-login)
+  (run-test-app #'mock-app user-login-with-remember-me-cookie-set))

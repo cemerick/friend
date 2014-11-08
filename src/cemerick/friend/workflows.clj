@@ -1,10 +1,16 @@
 (ns cemerick.friend.workflows
   (:require [cemerick.friend :as friend]
             [cemerick.friend.util :as util]
-            [ring.util.request :as req])
+            [cemerick.friend.credentials :as creds :refer [remember-me]]
+            [ring.util.request :as req]
+            [clojure.tools.trace :refer :all]
+            [clojure.edn :only (read-string)]
+            [aprint.core :refer :all]
+            )
   (:use [clojure.string :only (trim)]
         [cemerick.friend.util :only (gets)])
-  (:import org.apache.commons.codec.binary.Base64))
+  (:import [org.apache.commons.codec.binary Base64]
+           [java.util UUID]))
 
 (defn http-basic-deny
   [realm request]
@@ -39,7 +45,7 @@
       (if-let [[[_ username password]] (try (-> (re-matches #"\s*Basic\s+(.+)" authorization)
                                               ^String second
                                               (.getBytes "UTF-8")
-                                              Base64/decodeBase64
+                                              org.apache.commons.codec.binary.Base64/decodeBase64
                                               (String. "UTF-8")
                                               (#(re-seq #"([^:]*):(.*)" %)))
                                          (catch Exception e
@@ -66,6 +72,13 @@
   [form-params params]
   (or (get form-params "password") (:password params "")))
 
+(defn- remember-me?
+  [form-params params]
+  (let [rem-me-form-param (get form-params "remember-me")]
+    (if (= rem-me-form-param "false") false
+      (if (= rem-me-form-param "true") true
+        (or (get form-params "remember-me") (:remember-me params false))))))
+
 (defn interactive-login-redirect
   [{:keys [form-params params] :as request}]
   (ring.util.response/redirect
@@ -77,20 +90,81 @@
           param)
         request))))
 
+
 (defn interactive-form
   [& {:keys [login-uri credential-fn login-failure-handler redirect-on-auth?] :as form-config
       :or {redirect-on-auth? true}}]
   (fn [{:keys [request-method params form-params] :as request}]
+    ;;(print "interactive-form:")
+    ;;(aprint request)
     (when (and (= (gets :login-uri form-config (::friend/auth-config request)) (req/path-info request))
                (= :post request-method))
       (let [creds {:username (username form-params params)
-                   :password (password form-params params)}
-            {:keys [username password]} creds]
-        (if-let [user-record (and username password
-                                  ((gets :credential-fn form-config (::friend/auth-config request))
-                                   (with-meta creds {::friend/workflow :interactive-form})))]
-          (make-auth user-record
-                     {::friend/workflow :interactive-form
-                      ::friend/redirect-on-auth? redirect-on-auth?})
+                   :password (password form-params params)
+                   :remember-me? (remember-me? form-params params)}
+            {:keys [username password remember-me?]} creds]
+        (if-let [user-record  (and username password
+                                   ((gets :credential-fn form-config (::friend/auth-config request))
+                                    (with-meta creds {::friend/workflow :interactive-form})))]
+          (let [some-meta {::friend/workflow :interactive-form
+                           ::friend/redirect-on-auth? redirect-on-auth?}]
+            (make-auth user-record some-meta))
           ((or (gets :login-failure-handler form-config (::friend/auth-config request)) #'interactive-login-redirect)
            (update-in request [::friend/auth-config] merge form-config)))))))
+
+
+(defn read-cookie-value [rem-me-cookie-value]
+  (let [value (clojure.edn/read-string rem-me-cookie-value)]
+    (if (coll? value) value (str value))))
+
+(defn generate-serie-and-token []
+  {:serie (java.util.UUID/randomUUID)
+   :token (java.util.UUID/randomUUID)})
+
+(defprotocol REM-ME-TRIPLET-REPOSITORY
+  "an interface allowing to store and retrieve remember-me token without knowing anything about the persistence layer used"
+  (store-triplet [this username serie token] "store a serie and token as a hash with the username as the key")
+  (find-triplet-by-username  [this username] "find the serie and token as a hash with the username as the key"))
+
+(defprotocol REM-ME-HASH-REPOSITORY
+  (store-hash [this username hash])
+  (find-hash-by-username  [this username]))
+
+(defn remember-me-hash
+  "workflow for dealing with a hash if it is present in a cookie"
+  [& {:keys [login-uri credential-fn remember-me-fn login-failure-handler cookie-name redirect-on-auth?] :as form-config
+      :or {cookie-name "remember-me"}}]
+  (fn [request]
+    ;;(print "remember-me-hash:")
+    ;;(aprint request)
+    (let [cookie (read-cookie-value (get-in request [:cookies cookie-name :value]))]
+      (if (not-empty cookie)
+        (let [user-record-with-rem-me ((gets :remember-me-fn
+                                             form-config
+                                             (::friend/auth-config request))
+                                       (with-meta {:remember-me-cookie-value cookie} {::friend/workflow :remember-me-hash}))]
+                                        ;(println "remember-me-hash cookie-value=" cookie "user-record-with-rem-me=" user-record-with-rem-me)
+          (make-auth user-record-with-rem-me
+                     {::friend/workflow :remember-me-hash
+                      ::friend/redirect-on-auth? false}))
+
+        ;;(or (gets :login-failure-handler form-config (::friend/auth-config request)) #'interactive-login-redirect)
+        ;;(update-in request [::friend/auth-config] merge form-config)
+        ))))
+
+(defn remember-me-triplet
+  "store the triplet (username, serie, token) in a persistent storage, the cookie on the client side contains only the
+  username/serie hash and the username/serie/token hash in order to not expose the client username with the cookie"
+  [& {:keys [login-uri credential-fn login-failure-handler cookie-name token-repo] :as form-config
+      :or {cookie-name "remember-me"}}]
+  (fn [{:keys [request-method params form-params] :as request}]
+    (let [rem-me-map (read-cookie-value (get-in request [:cookies cookie-name :value]))]
+      ;;verify
+      (when (or (= :post request-method) (= :get request-method))
+        (let [{:keys [username serie-and-token-hash]} rem-me-map]
+          ;;(if-let [user-record (and rem-me-username rem-me-hash)])
+          )
+        )))
+)
+
+;;(trace-ns 'cemerick.friend.workflows)
