@@ -42,7 +42,7 @@
       (if-let [[[_ username password]] (try (-> (re-matches #"\s*Basic\s+(.+)" authorization)
                                               ^String second
                                               (.getBytes "UTF-8")
-                                              org.apache.commons.codec.binary.Base64/decodeBase64
+                                              Base64/decodeBase64
                                               (String. "UTF-8")
                                               (#(re-seq #"([^:]*):(.*)" %)))
                                          (catch Exception e
@@ -130,3 +130,4 @@
                      {::friend/workflow :remember-me-hash
                       ::friend/redirect-on-auth? false}))
         ))))
+

@@ -1,9 +1,6 @@
 (ns cemerick.friend
   (:require [cemerick.friend.util :as util]
             [clojure.set :as set]
-            [clojure.pprint :refer [pprint]]
-            [clojure.tools.trace :refer :all]
-            [ring.middleware.cookies :as cookies]
             [clj-time.core :as time]
             [clj-time.format :refer [with-locale formatter]]
             [clj-time.coerce :as time-coerce :refer [from-long]])
