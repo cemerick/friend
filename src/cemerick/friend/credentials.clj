@@ -1,6 +1,5 @@
 (ns cemerick.friend.credentials
-  (:require [clojure.tools.trace :refer :all]
-            [clojure.edn])
+  (:require [clojure.edn])
   (:import (org.mindrot.jbcrypt BCrypt)
            (org.apache.commons.codec.binary Base64)
            (java.util UUID)))
@@ -20,10 +19,6 @@
 the result of previously hashing that password."
   [password hash]
   (BCrypt/checkpw password hash))
-
-(defn generate-serie-and-token []
-  {:serie (UUID/randomUUID)
-   :token (UUID/randomUUID)})
 
 (defn- remember-me-str [{:keys [username password-hash expiration-time salt]}]
   (str "username=" username
@@ -95,7 +90,7 @@ the result of previously hashing that password."
    entry."
   ([load-credentials-fn {:keys [username password remember-me?] :as provided-user-data}]
      (bcrypt-credential-fn load-credentials-fn nil provided-user-data))
-  ([load-credentials-fn save-remember-me-fn! {:keys [username password remember-me?] :as provided-user-data}]
+  ([load-credentials-fn save-remember-me-fn! {:keys [username password remember-me? remember-me-short-life?] :as provided-user-data}]
      (when-let [creds (load-credentials-fn username)]
        (let [password-key (or (-> creds meta ::password-key) :password)]
          (when (bcrypt-verify password (get creds password-key))
@@ -103,7 +98,7 @@ the result of previously hashing that password."
              (dissoc (remember-me save-remember-me-fn! creds) password-key)
              (dissoc creds password-key)))))))
 
-(defn remember-me-hash-fn ""
+(defn remember-me-hash-fn
   [load-credentials-fn
    load-rem-me-credentials-fn
    {:keys [remember-me-cookie-value]}]
@@ -123,18 +118,3 @@ the result of previously hashing that password."
                      (not-expired? expiration-time))
             (dissoc creds-with-rem-me password-key :salt :password-hash)))))))
 
-(defn remember-me-hash-credential-fn-OBSOLETE
-  "If :password is missing and :remember-me-hash is present, check the hash against
-  the credentials loaded with load-credentials-fn and the value at key :hash-key, otherwise if
-  :password is present then bcrypt-credential-fn will be invoked.
-  password has always the priority over the remember me hash, so if the password is bad the login
-  will fail even if the hash is correct"
-  [load-credentials-fn {:keys [username password remember-me-hash] :as form-config}]
-  (if (not (empty? password))
-    (bcrypt-credential-fn load-credentials-fn form-config)
-    (when-let [creds (load-credentials-fn username)]
-      (let [hash-key (or (-> creds meta ::hash-key) :remember-me-hash)]
-        (when (= (get creds hash-key) remember-me-hash)
-          (dissoc creds hash-key))))))
-
-;;(trace-ns 'cemerick.friend.credentials)

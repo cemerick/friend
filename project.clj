@@ -24,8 +24,6 @@
                  ; need different httpclient rev for https://issues.apache.org/jira/browse/HTTPCLIENT-1118
                  [org.apache.httpcomponents/httpclient "4.3.5"]
 
-                 ;; spexec BDD library
-                 [spexec "1.1.0"]
                  ]
   :plugins [[lein-ring "0.8.12"]]
   :ring {:handler test-friend.mock-app/mock-app :port 8080}

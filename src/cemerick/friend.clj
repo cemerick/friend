@@ -8,8 +8,7 @@
             [clj-time.format :refer [with-locale formatter]]
             [clj-time.coerce :as time-coerce :refer [from-long]])
   (:use (ring.util [response :as response :only (redirect)])
-        [slingshot.slingshot :only (throw+ try+)]
-        [aprint.core])
+        [slingshot.slingshot :only (throw+ try+)])
   (:import (org.joda.time DateTimeZone)
            (java.util Locale))
   (:refer-clojure :exclude (identity)))
@@ -415,5 +414,3 @@ or joda-time (clj-time) compatible instant/partial."
       (throw-unauthorized (identity request)
                           {::wrapped-handler handler
                            ::required-roles roles}))))
-
-;;(trace-ns 'cemerick.friend)
