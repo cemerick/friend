@@ -1,4 +1,5 @@
 # Friend  [![Travis CI status](https://secure.travis-ci.org/cemerick/friend.png)](http://travis-ci.org/#!/cemerick/friend/builds)
+[![Dependencies Status](http://jarkeeper.com/cemerick/friend/status.svg)](http://jarkeeper.com/cemerick/friend)
 
 An extensible authentication and authorization library for
 [Clojure](http://clojure.org)/[Ring](http://github.com/ring-clojure/ring)
