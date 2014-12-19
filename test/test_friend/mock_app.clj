@@ -84,6 +84,9 @@
   (POST "/reset-session" request
         (-> (resp/redirect "/")
             (update-in [:session] dissoc ::identity)))
+  (POST "/reset-rem-me" request
+        (reset! remember-me-map {})
+        (resp/redirect "/"))
 
   ;;;;; USER
   (compojure/context "/user" request (friend/wrap-authorize user-routes #{::user} ))
@@ -131,6 +134,7 @@
   (-> mock-app*
       (friend/authenticate
        {:credential-fn (partial creds/bcrypt-credential-fn users (partial swap! remember-me-map assoc))
+        :reset-remember-me-fn (partial dissoc (deref remember-me-map))
         :remember-me-fn (partial creds/remember-me-hash-fn users (fn [key] (get (deref remember-me-map) key)))
         :unauthorized-handler #(if-let [msg (-> % ::friend/authorization-failure :response-msg)]
                                  {:status 403 :body msg}

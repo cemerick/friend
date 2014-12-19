@@ -1,5 +1,6 @@
 (ns cemerick.friend.credentials
-  (:require [clojure.edn])
+  (:require [clojure.edn]
+            [clojure.tools.trace :refer :all])
   (:import (org.mindrot.jbcrypt BCrypt)
            (org.apache.commons.codec.binary Base64)
            (java.util UUID)))
@@ -117,4 +118,3 @@ the result of previously hashing that password."
           (when (and (bcrypt-verify (remember-me-str rem-me-data) hash)
                      (not-expired? expiration-time))
             (dissoc creds-with-rem-me password-key :salt :password-hash)))))))
-

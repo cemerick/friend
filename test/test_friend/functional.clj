@@ -117,10 +117,17 @@
     (is (= (page-bodies "/user/account") (:body (http/get (url "/user/account?query-string=test") {:cookie-store cs}))))
     ;;and get a login page if we do not provide the remember-me cookie
     (is (= (page-bodies "/login") (:body (http/get (url "/user/account?query-string=test")))))
+
+    ;;reset the remember-me store and provide a remember-me cookie to check everything goes right
+    (http/post (url "/reset-rem-me") {:cookie-store cs})
+    (http/post (url "/login") {:form-params {:username "jane" :password "user_password" :remember-me true}
+                               :cookie-store cs
+                               :follow-redirects false})
+
     ;;now logout to verify the remember-me cookie is correctly invalidated
     (testing "logout blocks access to privileged routes"
-       (is (= (page-bodies "/") (:body (http/get (url "/logout") {:cookie-store cs}))))
-       ;;(is (= (page-bodies "/login") (:body (http/get (url "/user/account") {:cookie-store cs}))))
+      (is (= (page-bodies "/") (:body (http/get (url "/logout") {:cookie-store cs}))))
+      ;;(is (= (page-bodies "/login") (:body (http/get (url "/user/account") {:cookie-store cs}))))
       )
     ;;TODO check expiration time for cookie (either by issuing a very short lived cookie or indirecting the "now" fn on server in the future)
     ;;check cookie value modification invalidate the authentication

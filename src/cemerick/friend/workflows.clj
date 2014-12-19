@@ -3,6 +3,7 @@
             [cemerick.friend.util :as util]
             [cemerick.friend.credentials :as creds :refer [remember-me]]
             [ring.util.request :as req]
+            [clojure.tools.trace :refer :all]
             [clojure.edn :only (read-string)])
   (:use [clojure.string :only (trim)]
         [cemerick.friend.util :only (gets)])
@@ -92,27 +93,27 @@
   [& {:keys [login-uri credential-fn login-failure-handler redirect-on-auth?] :as form-config
       :or {redirect-on-auth? true}}]
   (fn [{:keys [request-method params form-params] :as request}]
-    ;;(print "interactive-form:")
-    ;;(aprint request)
     (when (and (= (gets :login-uri form-config (::friend/auth-config request)) (req/path-info request))
                (= :post request-method))
       (let [creds {:username (username form-params params)
                    :password (password form-params params)
                    :remember-me? (remember-me? form-params params)}
             {:keys [username password remember-me?]} creds]
+        (trace "interactive-form creds" creds)
         (if-let [user-record  (and username password
                                    ((gets :credential-fn form-config (::friend/auth-config request))
                                     (with-meta creds {::friend/workflow :interactive-form})))]
           (let [some-meta {::friend/workflow :interactive-form
                            ::friend/redirect-on-auth? redirect-on-auth?}]
+            (trace "interactive-form user-record" user-record)
             (make-auth user-record some-meta))
-          ((or (gets :login-failure-handler form-config (::friend/auth-config request)) #'interactive-login-redirect)
-           (update-in request [::friend/auth-config] merge form-config)))))))
+          (trace "interactive-form else return " ((or (gets :login-failure-handler form-config (::friend/auth-config request)) #'interactive-login-redirect)
+                                                  (update-in request [::friend/auth-config] merge form-config))))))))
 
 
-(defn read-cookie-value [rem-me-cookie-value]
-  (let [value (clojure.edn/read-string rem-me-cookie-value)]
-    (if (coll? value) value (str value))))
+  (defn read-cookie-value [rem-me-cookie-value]
+    (let [value (clojure.edn/read-string rem-me-cookie-value)]
+      (if (coll? value) value (str value))))
 
 
 (defn remember-me-hash
@@ -120,14 +121,16 @@
   [& {:keys [login-uri credential-fn remember-me-fn login-failure-handler cookie-name redirect-on-auth?] :as form-config
       :or {cookie-name "remember-me"}}]
   (fn [request]
-    (let [cookie (read-cookie-value (get-in request [:cookies cookie-name :value]))]
-      (if (not-empty cookie)
-        (let [user-record-with-rem-me ((gets :remember-me-fn
-                                             form-config
-                                             (::friend/auth-config request))
-                                       (with-meta {:remember-me-cookie-value cookie} {::friend/workflow :remember-me-hash}))]
-          (make-auth user-record-with-rem-me
-                     {::friend/workflow :remember-me-hash
-                      ::friend/redirect-on-auth? false}))
-        ))))
+    (trace "remember-me-hash req" request)
+    (trace "remember-me-hash let" (let [cookie (read-cookie-value (get-in request [:cookies cookie-name :value]))]
+                                    (if (not-empty cookie)
+                                      (if-let [user-record-with-rem-me ((gets :remember-me-fn
+                                                                              form-config
+                                                                              (::friend/auth-config request))
+                                                                        (with-meta {:remember-me-cookie-value cookie} {::friend/workflow :remember-me-hash}))]
+                                        (make-auth user-record-with-rem-me
+                                                   {::friend/workflow :remember-me-hash
+                                                    ::friend/redirect-on-auth? false}))
+                                      )))))
 
+(trace-ns 'cemerick.friend.workflows)

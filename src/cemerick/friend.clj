@@ -1,6 +1,7 @@
 (ns cemerick.friend
   (:require [cemerick.friend.util :as util]
             [clojure.set :as set]
+            [clojure.tools.trace :refer :all]
             [clj-time.core :as time]
             [clj-time.format :refer [with-locale formatter]]
             [clj-time.coerce :as time-coerce :refer [from-long]])
@@ -80,14 +81,24 @@ being added back into the final response)."
   [response]
   (update-in response [:session] dissoc ::identity))
 
+(defn logout-remember-me!
+  "remove all remember-me token associated with the current username
+  with the storage fn provided with auth-config"
+  [request]
+   (let [username (get-in request [:session ::identity :current])
+         reset-remember-me-fn! (get-in request [::auth-config :reset-remember-me-fn])]
+     (reset-remember-me-fn! username)))
+
 (defn logout
   "Ring middleware that modifies the response to drop all retained
 authentications."
   [handler]
-  #(when-let [response (handler %)]
-     (->> (or (:session response) (:session %))
-       (assoc response :session)
-       logout*)))
+  (fn [request]
+    (logout-remember-me! request)
+    (when-let [response (handler request)]
+      (->> (or (:session response) (:session request))
+           (assoc response :session)
+           logout*))))
 
 (defn- default-unauthorized-handler
   [request]
@@ -411,3 +422,4 @@ or joda-time (clj-time) compatible instant/partial."
       (throw-unauthorized (identity request)
                           {::wrapped-handler handler
                            ::required-roles roles}))))
+(trace-ns 'cemerick.friend)
