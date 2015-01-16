@@ -81,14 +81,9 @@ Friend has been built with one eye on a number of frameworks.
 
 ### Status
 
-Friend is brand-spanking-new.  It's also obviously involved in security
-matters.  While it's hardly untested, and _is_ in use in production,
-it's obviously not seen the kind of beating and vetting that established
-security libraries and frameworks have had (i.e. spring-security, JAAS
-stuff, etc).
+Very stable, widely-used in production AFAIK.
 
-So, proceed happily, but mindfully.  Only with your help will we have a
-widely-tested Ring application security library.
+Note: while actively maintained, [Friend is in search of a new maintainer](https://groups.google.com/forum/#!topic/clojure-sec/ceMhYPR0G60).
 
 ### Changelog
 
