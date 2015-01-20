@@ -1,8 +1,13 @@
 (ns cemerick.friend
   (:require [cemerick.friend.util :as util]
-            [clojure.set :as set])
+            [clojure.set :as set]
+            [clj-time.core :as time]
+            [clj-time.format :refer [with-locale formatter]]
+            [clj-time.coerce :as time-coerce :refer [from-long]])
   (:use (ring.util [response :as response :only (redirect)])
         [slingshot.slingshot :only (throw+ try+)])
+  (:import (org.joda.time DateTimeZone)
+           (java.util Locale))
   (:refer-clojure :exclude (identity)))
 
 (def ^{:dynamic true} *default-scheme-ports* {:http 80 :https 443})
@@ -151,13 +156,13 @@ Equivalent to (complement current-authentication)."}
   (when-let [redirect (::redirect-on-auth? (meta authentication-map) true)]
     (let [unauthorized-uri (-> request :session ::unauthorized-uri)
           resp (response/redirect-after-post
-                 (or unauthorized-uri
-                     (and (string? redirect) redirect)
-                      (str (:context request) (-> request ::auth-config :default-landing-uri ))))]
+                (or unauthorized-uri
+                    (and (string? redirect) redirect)
+                    (str (:context request) (-> request ::auth-config :default-landing-uri ))))]
       (if unauthorized-uri
         (-> resp
-          (assoc :session (:session request))
-          (update-in [:session] dissoc ::unauthorized-uri))
+            (assoc :session (:session request))
+            (update-in [:session] dissoc ::unauthorized-uri))
         resp))))
 
 (defn default-unauthenticated-handler
@@ -235,23 +240,50 @@ which contains a map to be called with a ring handler."
                config)
         request (assoc request ::auth-config config)
         workflow-result (some #(% request) workflows)]
-
       (if (and workflow-result (not (auth? workflow-result)))
         ;; workflow assumed to be a ring response
         workflow-result
         (no-workflow-result-request request config workflow-result))))
 
-(defn- authenticate*
+(def #^{:private true}
+  cookie-date-formatter (with-locale
+                          (formatter "EEE, dd MMM YYYY HH:mm:ss" DateTimeZone/UTC)
+                          Locale/US))
+
+(defn cookie-date [date]
+  "convert a clj-time/joda-time instant to the correct date formatting
+for HTTP cookies."
+  (str (.print cookie-date-formatter date) " GMT"))
+
+(defn persistent-cookie
+  "create a persistent cookie. expires can be milliseconds epoch time
+or joda-time (clj-time) compatible instant/partial."
+  ([name value expires attrs]
+     {name (assoc attrs :value value :expires (cookie-date expires))})
+  ([name value expires]
+     (persistent-cookie name value expires {})))
+
+(defn set-cookies-if-any [response]
+  (let [current-identity (get-in response [:session :cemerick.friend/identity :current])
+        expiration-time (get-in response [:session :cemerick.friend/identity :authentications current-identity :expiration-time])
+        cookie-value (get-in response [:session :cemerick.friend/identity :authentications current-identity :remember-me-cookie-value])]
+    (if cookie-value
+      (assoc response :cookies (persistent-cookie :remember-me cookie-value
+                                                  (time-coerce/from-long expiration-time) {:path "/"}))
+      response)))
+
+(defn authenticate*
   [ring-handler auth-config request]
   (let [response-or-handler-map (authenticate-request request auth-config)
         response (if-let [handler-map (:friend/handler-map response-or-handler-map)]
-                   (handler-request ring-handler handler-map) response-or-handler-map)]
-    (authenticate-response
-      (update-in response
-        [:friend/ensure-identity-request]
-        (fn [x]
-          (or x (:friend/ensure-identity-request response-or-handler-map))))
-      request)))
+                   (handler-request ring-handler handler-map)
+                   response-or-handler-map)]
+    (set-cookies-if-any (authenticate-response
+                         (update-in response
+                                    [:friend/ensure-identity-request]
+                                    (fn [x]
+                                      (or x (:friend/ensure-identity-request response-or-handler-map))))
+                         request))))
 
 (defn authenticate
   [ring-handler auth-config]
@@ -261,8 +293,8 @@ which contains a map to be called with a ring handler."
 (defn throw-unauthorized
   "Throws a slingshot stone (see `slingshot.slingshot/throw+`) containing
    the [authorization-info] map, in addition to these slots:
- 
-   :cemerick.friend/type - the type of authorization failure that has 
+
+   :cemerick.friend/type - the type of authorization failure that has
         occurred, defaults to `:unauthorized`
    :cemerick.friend/identity - the current identity, defaults to the
         provided [identity] argument
@@ -326,7 +358,7 @@ which contains a map to be called with a ring handler."
 
      (authorize #{::user :some.ns/admin}
        {:op-name \"descriptive name for secured operation\"}
-        
+
 
    Note that this macro depends upon the *identity* var being bound to the
    current user's authentications.  This will work fine in e.g. agent sends

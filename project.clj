@@ -11,7 +11,7 @@
                  [org.mindrot/jbcrypt "0.3m"]
 
                  ;; http-basic
-                 [commons-codec "1.6"]
+                 [commons-codec/commons-codec "1.9"]
 
                  ;; openid
                  [org.clojure/core.cache "0.6.2"]
@@ -22,20 +22,27 @@
                  [com.google.inject/guice "2.0"]
                  [net.sourceforge.nekohtml/nekohtml "1.9.10"]
                  ; need different httpclient rev for https://issues.apache.org/jira/browse/HTTPCLIENT-1118
-                 [org.apache.httpcomponents/httpclient "4.2.1"]]
-  
+                 [org.apache.httpcomponents/httpclient "4.3.5"]
+
+                 ]
+  :plugins [[lein-ring "0.8.12"]]
+  :ring {:handler test-friend.mock-app/mock-app :port 8080}
   :deploy-repositories {"releases" {:url "https://clojars.org/repo/" :creds :gpg}
                         "snapshots" {:url "https://clojars.org/repo/" :creds :gpg}}
-  
-  :profiles {:dev {:dependencies [[ring-mock "0.1.1"]
+
+  :profiles {:dev {:source-paths ["dev" "src" "test"]
+                   :dependencies [[org.clojure/tools.namespace "0.2.7"]
+                                  [org.clojure/java.classpath "0.2.2"]
+                                  [ring-mock "0.1.1"]
+                                  [aprint "0.1.1"]
                                   [compojure "1.1.5"]
                                   [ring "1.2.0"]
                                   [robert/hooke "1.3.0"]
-                                  [clj-http "0.3.6"]]}
+                                  [clj-http "1.0.0"]
+                                  [expectations "2.0.9"]]}
              :sanity-check {:aot :all
                             :warn-on-reflection true
-                            :compile-path "target/sanity-check-aot"}
-             :1.5 [:dev {:dependencies [[org.clojure/clojure "1.5.1"]]}]}
+                            :compile-path "target/sanity-check-aot"}}
   :aliases  {"all" ["with-profile" "1.5:dev"]
              "sanity-check" ["do" "clean," "with-profile" "sanity-check" "compile"]})
 

@@ -23,6 +23,16 @@
 
 (def missles-fired? (atom false))
 
+(def remember-me-map (atom {}))
+
+(defn invalidate-rem-me-handler [handler]
+  #(when-let [response (handler %)]
+    (let [ session (or (:session %) (:session response))
+          username (-> session ::identity :username)]
+      (println "username " username)
+      (swap! remember-me-map (partial dissoc username))
+      response)))
+
 (defn- json-response
   [x]
   (-> (json/generate-string x)
@@ -55,26 +65,29 @@
                                              [:input {:type "submit" :name "login"}]]]))
   (GET "/login" request (page-bodies (:uri request)))
   (GET "/free-api" request (api-call 99))
-  (friend/logout (ANY "/logout" request (resp/redirect "/")))
-  
+  (friend/logout   (ANY "/logout" request (resp/redirect "/")))
+
   (GET "/echo-roles" request (friend/authenticated
                                (-> (friend/current-authentication request)
                                  (select-keys [:roles])
                                  json-response)))
-  
+
   ;;;;; session integrity
   (GET "/session-value" request
        (-> request :session :session-value resp/response))
   (POST "/session-value" request
         (let [value (-> request :params :value)]
-          (-> value 
-            resp/response 
+          (-> value
+            resp/response
             (assoc :session (assoc (:session request)
                                    :session-value value)))))
-  
+  (POST "/reset-session" request
+        (-> (resp/redirect "/")
+            (update-in [:session] dissoc ::identity)))
+
   ;;;;; USER
   (compojure/context "/user" request (friend/wrap-authorize user-routes #{::user} ))
-  
+
   ;;;;; ADMIN
   (GET "/admin" request (friend/authorize #{::admin}
                           (page-bodies (:uri request))))
@@ -82,15 +95,15 @@
   (GET "/fire-missles" request (friend/authorize #{::admin}
                                  {:response-msg "403 message thrown with unauthorized stone"}
                                  (reset! missles-fired? "shouldn't happen")))
-  
+
   (GET "/view-openid" request
        (str "OpenId authentication? " (some-> request friend/identity friend/current-authentication pr-str)))
-  
+
   ;; FIN
   (route/not-found "404"))
 
 (defroutes api-routes
-  ;;;;; API
+  ;;;;;
   (GET "/auth-api" request
     (friend/authorize #{:api} (api-call :authorized)))
   (GET "/anon" request (api-call :anon))
@@ -100,7 +113,6 @@
 (def users {"root" {:username "root"
                     :password (creds/hash-bcrypt "admin_password")
                     :roles #{::admin}}
-
             "root-fn-role" {:username "root-fn-role"
                             :password (creds/hash-bcrypt "admin_password")
                             :roles (constantly #{::admin})}
@@ -114,17 +126,20 @@
                            :password (creds/hash-bcrypt "api-pass")
                            :roles #{:api}}})
 
+
 (def mock-app
   (-> mock-app*
-    (friend/authenticate
-      {:credential-fn (partial creds/bcrypt-credential-fn users)
-       :unauthorized-handler #(if-let [msg (-> % ::friend/authorization-failure :response-msg)]
-                                {:status 403 :body msg}
-                                (#'friend/default-unauthorized-handler %)) 
-       :workflows [(workflows/interactive-form)
-                   ;; TODO move openid test into its own ns
-                   (openid/workflow :credential-fn identity)]})
-    handler/site))
+      (friend/authenticate
+       {:credential-fn (partial creds/bcrypt-credential-fn users (partial swap! remember-me-map assoc))
+        :remember-me-fn (partial creds/remember-me-hash-fn users (fn [key] (get (deref remember-me-map) key)))
+        :unauthorized-handler #(if-let [msg (-> % ::friend/authorization-failure :response-msg)]
+                                 {:status 403 :body msg}
+                                 (#'friend/default-unauthorized-handler %))
+        :workflows [(workflows/remember-me-hash)
+                    (workflows/interactive-form)
+                    ;; TODO move openid test into its own ns
+                    (openid/workflow :credential-fn identity)]})
+      handler/site))
 
 (def api-app
   (handler/api
