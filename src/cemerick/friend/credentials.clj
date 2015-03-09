@@ -1,5 +1,5 @@
 (ns cemerick.friend.credentials
-  (:import org.mindrot.jbcrypt.BCrypt))
+  (:require [crypto.password.bcrypt :as bcrypt]))
 
 (defn hash-bcrypt
   "Hashes a given plaintext password using bcrypt and an optional
@@ -7,15 +7,15 @@
   to hash passwords included in stored user credentials that are to be
   later verified using `bcrypt-credential-fn`."
   [password & {:keys [work-factor]}]
-  (BCrypt/hashpw password (if work-factor
-                            (BCrypt/gensalt work-factor)
-                            (BCrypt/gensalt))))
+  (if work-factor
+    (bcrypt/encrypt password work-factor)
+    (bcrypt/encrypt password)))
 
 (defn bcrypt-verify
   "Returns true if the plaintext [password] corresponds to [hash],
   the result of previously hashing that password."
   [password hash]
-  (BCrypt/checkpw password hash))
+  (bcrypt/check password hash))
 
 (defn bcrypt-credential-fn
   "A bcrypt credentials function intended to be used with
