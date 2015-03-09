@@ -53,3 +53,18 @@
   a [:cemerick.friend.credentials/password-key :app.foo/passphrase]
   entry."
   (build-credential-fn bcrypt-verify))
+
+(defn hash-pbkdf2
+  [password & {:keys [iterations salt]}]
+  (if iterations
+    (if salt
+      (pbkdf2/encrypt password iterations salt)
+      (pbkdf2/encrypt password iterations))
+    (pbkdf2/encrypt password)))
+
+(defn pbkdf2-verify
+  [password hash]
+  (pbkdf2/check password hash))
+
+(def pbkdf2-credential-fn
+  (build-credential-fn pbkdf2-verify))
