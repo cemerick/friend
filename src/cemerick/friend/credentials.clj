@@ -1,5 +1,13 @@
 (ns cemerick.friend.credentials
-  (:require [crypto.password.bcrypt :as bcrypt]))
+  (:require [crypto.password.bcrypt :as bcrypt]
+            [crypto.password.pbkdf2 :as pbkdf2]))
+
+(defn- build-credential-fn [verify-fn]
+  (fn [load-credentials-fn {:keys [username password]}]
+    (when-let [creds (load-credentials-fn username)]
+      (let [password-key (or (-> creds meta ::password-key) :password)]
+        (when (verify-fn password (get creds password-key))
+          (dissoc creds password-key))))))
 
 (defn hash-bcrypt
   "Hashes a given plaintext password using bcrypt and an optional
@@ -17,7 +25,7 @@
   [password hash]
   (bcrypt/check password hash))
 
-(defn bcrypt-credential-fn
+(def bcrypt-credential-fn
   "A bcrypt credentials function intended to be used with
   `cemerick.friend/authenticate` or individual authentication
   workflows.  You must supply a function of one argument that will
@@ -44,8 +52,4 @@
   credentials map contains
   a [:cemerick.friend.credentials/password-key :app.foo/passphrase]
   entry."
-  [load-credentials-fn {:keys [username password]}]
-  (when-let [creds (load-credentials-fn username)]
-    (let [password-key (or (-> creds meta ::password-key) :password)]
-      (when (bcrypt-verify password (get creds password-key))
-        (dissoc creds password-key)))))
+  (build-credential-fn bcrypt-verify))
