@@ -11,9 +11,9 @@
 
 (defn hash-bcrypt
   "Hashes a given plaintext password using bcrypt and an optional
-   :work-factor (defaults to 10 as of this writing).  Should be used
-  to hash passwords included in stored user credentials that are to be
-  later verified using `bcrypt-credential-fn`."
+   :work-factor (defaults to 10 as of this writing).  Should be used to hash
+   passwords included in stored user credentials that are to be later verified
+   using `bcrypt-credential-fn`."
   [password & {:keys [work-factor]}]
   (if work-factor
     (bcrypt/encrypt password work-factor)
@@ -21,7 +21,7 @@
 
 (defn bcrypt-verify
   "Returns true if the plaintext [password] corresponds to [hash],
-  the result of previously hashing that password."
+the result of previously hashing that password."
   [password hash]
   (bcrypt/check password hash))
 
@@ -35,16 +35,15 @@
                   :other :config ...}
      ring-handler-to-be-secured)
 
-  The credentials map returned by the provided function will only be
-  returned if the provided (cleartext, user-supplied) password matches
-  the hashed password in the credentials map.
+   The credentials map returned by the provided function will only be returned if
+   the provided (cleartext, user-supplied) password matches the hashed
+   password in the credentials map.
 
-  The password in the credentials map will be looked up using
-  a :password key by default; if the credentials-loading function will
-  return a credentials map that stores the hashed password under a
-  different key, it must specify that alternative key via
-  a :cemerick.friend.credentials/password-key slot in the map's
-  metadata.  So, if a credentials map looks like:
+   The password in the credentials map will be looked up using a :password
+   key by default; if the credentials-loading function will return a credentials
+   map that stores the hashed password under a different key, it must specify
+   that alternative key via a :cemerick.friend.credentials/password-key slot
+   in the map's metadata.  So, if a credentials map looks like:
 
      {:username \"joe\" :app.foo/passphrase \"bcrypt hash\"}
 
