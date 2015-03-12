@@ -1,6 +1,7 @@
 (ns cemerick.friend.credentials
   (:require [crypto.password.bcrypt :as bcrypt]
-            [crypto.password.pbkdf2 :as pbkdf2]))
+            [crypto.password.pbkdf2 :as pbkdf2]
+            [crypto.password.scrypt :as scrypt]))
 
 (defn build-credential-fn
   "Builds a credential function from a verify function of two
@@ -71,3 +72,18 @@ the result of previously hashing that password."
 
 (def pbkdf2-credential-fn
   (build-credential-fn pbkdf2-verify))
+
+(defn hash-scrypt
+  [password & {:keys [cpu ram para]}]
+  (if cpu
+    (if (and ram para)
+      (scrypt/encrypt password cpu ram para)
+      (scrypt/encrypt password cpu))
+    (scrypt/encrypt password)))
+
+(defn scrypt-verify
+  [password hash]
+  (scrypt/check password hash))
+
+(def scrypt-credential-fn
+  (build-credential-fn scrypt-verify))
