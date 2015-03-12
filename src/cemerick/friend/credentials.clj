@@ -4,9 +4,10 @@
             [crypto.password.scrypt :as scrypt]))
 
 (defn build-credential-fn
-  "Builds a credential function from a verify function of two
-  arguments that checks if the plaintext password in the first
-  argument hashes to the second argument"
+  "Builds a credential function from the given verify function. The
+  verify function must accept two arguments and verifies that the
+  plaintext password in the first argument hashes to the second
+  argument"
   [verify-fn]
   (fn [load-credentials-fn {:keys [username password]}]
     (when-let [creds (load-credentials-fn username)]
