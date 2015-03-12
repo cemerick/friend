@@ -121,6 +121,8 @@
     (scrypt/encrypt password)))
 
 (defn scrypt-verify
+  "Returns true if the plaintext [password] corresponds to [hash], the
+  result of previously hashing that password with scrypt."
   [password hash]
   (scrypt/check password hash))
 
