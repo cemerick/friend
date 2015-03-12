@@ -62,7 +62,7 @@
 (defn hash-pbkdf2
   "Hashes the given plaintext password using pbkdf2. An optional
   number of :iterations can be specified (defaults to 100,000) and, if
-  the number of iterations is specified, and optional :salt can also
+  the number of iterations is specified, an optional :salt can also
   be specified (defaults to 8 random bytes). Should be used to hash
   passwords included in stored user credentials that are to be later
   verified using `pbkdf2-credential-fn`."
@@ -80,6 +80,7 @@
   (pbkdf2/check password hash))
 
 (def pbkdf2-credential-fn
+  ""
   (build-credential-fn pbkdf2-verify))
 
 (defn hash-scrypt
