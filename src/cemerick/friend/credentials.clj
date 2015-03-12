@@ -3,7 +3,7 @@
             [crypto.password.pbkdf2 :as pbkdf2]
             [crypto.password.scrypt :as scrypt]))
 
-(defn build-credential-fn
+(defn- build-credential-fn
   "Builds a credential function from the given verify function. The
   verify function must accept two arguments and verifies that the
   plaintext password in the first argument hashes to the second
