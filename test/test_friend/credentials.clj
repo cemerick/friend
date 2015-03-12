@@ -26,3 +26,9 @@
          (creds/pbkdf2-credential-fn
           {"username" {:username "joe" :password (creds/hash-pbkdf2 "foo")}}
           {:username "username" :password "foo"}))))
+
+(deftest simple-scrypt
+  (is (= {:username "joe"}
+         (creds/scrypt-credential-fn
+          {"username" {:username "joe" :password (creds/hash-scrypt "foo")}}
+          {:username "username" :password "foo"}))))
