@@ -60,6 +60,12 @@ the result of previously hashing that password."
   (build-credential-fn bcrypt-verify))
 
 (defn hash-pbkdf2
+  "Hashes the given plaintext password using pbkdf2. An optional
+  number of :iterations can be specified (defaults to 100,000) and, if
+  the number of iterations is specified, and optional :salt can also
+  be specified (defaults to 8 random bytes). Should be used to hash
+  passwords included in stored user credentials that are to be later
+  verified using `pbkdf2-credential-fn`."
   [password & {:keys [iterations salt]}]
   (if iterations
     (if salt
