@@ -26,8 +26,8 @@
     (bcrypt/encrypt password)))
 
 (defn bcrypt-verify
-  "Returns true if the plaintext [password] corresponds to [hash],
-the result of previously hashing that password."
+  "Returns true if the plaintext [password] corresponds to [hash], the
+  result of previously hashing that password with bcrypt."
   [password hash]
   (bcrypt/check password hash))
 
@@ -74,6 +74,8 @@ the result of previously hashing that password."
     (pbkdf2/encrypt password)))
 
 (defn pbkdf2-verify
+  "Returns true if the plantext [password] corresponds to [hash], the
+  result of previously hashing that password with pbkdf2."
   [password hash]
   (pbkdf2/check password hash))
 
