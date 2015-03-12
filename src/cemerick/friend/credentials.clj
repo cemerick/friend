@@ -108,6 +108,11 @@
   (build-credential-fn pbkdf2-verify))
 
 (defn hash-scrypt
+  "Hashes the given plaintext password using scrypt. an optional :cpu
+  cost parameter (defaults to 2^15) can be specified, but it must be a
+  power of 2. If the :cpu parameter is specified, then
+  optional :para (defaults to 1) and :ram (defaults to 8) parameters
+  can be specified for the memory cost and para factor respectively"
   [password & {:keys [cpu ram para]}]
   (if cpu
     (if (and ram para)
