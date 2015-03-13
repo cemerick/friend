@@ -247,10 +247,11 @@ which contains a map to be called with a ring handler."
         response (if-let [handler-map (:friend/handler-map response-or-handler-map)]
                    (handler-request ring-handler handler-map) response-or-handler-map)]
     (authenticate-response
-      (update-in response
-        [:friend/ensure-identity-request]
-        (fn [x]
-          (or x (:friend/ensure-identity-request response-or-handler-map))))
+      (when response
+        (update-in response
+                   [:friend/ensure-identity-request]
+                   (fn [x]
+                     (or x (:friend/ensure-identity-request response-or-handler-map)))))
       request)))
 
 (defn authenticate
