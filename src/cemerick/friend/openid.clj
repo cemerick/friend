@@ -54,6 +54,7 @@
                     (.authenticate mgr provider-info return-url)))
         discovery-key (str (java.util.UUID/randomUUID))]
     (swap! discovery-cache assoc discovery-key provider-info)
+    (.setHandle auth-req "")
     (assoc (ring.util.response/redirect (.getDestinationUrl auth-req true))
       :session (assoc session ::openid-disc discovery-key))))
 
@@ -101,14 +102,14 @@
            user-identifier-param "identifier"
            max-nonce-age 60000}
       :as openid-config}]
-  (let [mgr (or consumer-manager
-                (doto (ConsumerManager.)
-                  (.setAssociations (InMemoryConsumerAssociationStore.))
-                  (.setNonceVerifier (InMemoryNonceVerifier. (/ max-nonce-age 1000)))))
-        discovery-cache (atom (cache/ttl-cache-factory {} :ttl max-nonce-age))]
     (fn [{:keys [ request-method params] :as request}]
       (when (=  (req/path-info request) openid-uri)
-        (let [params (clojure.walk/stringify-keys params)
+        (let [mgr (or consumer-manager
+                      (doto (ConsumerManager.)
+                        (.setAssociations (InMemoryConsumerAssociationStore.))
+                        (.setNonceVerifier (InMemoryNonceVerifier. (/ max-nonce-age 1000)))))
+              discovery-cache (atom (cache/ttl-cache-factory {} :ttl max-nonce-age))
+              params (clojure.walk/stringify-keys params)
               user-identifier (and (= request-method :post)
                                    (get params (name user-identifier-param)))]
           (cond
@@ -127,4 +128,4 @@
 
             ;; TODO correct response code?
             :else ((gets :login-failure-handler openid-config (::friend/auth-config request))
-                    request)))))))
+                    request))))))
