@@ -6,9 +6,8 @@
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [ring/ring-core "1.2.0"]
+                 [crypto-password "0.1.3"]
                  [slingshot "0.10.2"]
-
-                 [org.mindrot/jbcrypt "0.3m"]
 
                  ;; http-basic
                  [commons-codec "1.6"]
@@ -23,10 +22,10 @@
                  [net.sourceforge.nekohtml/nekohtml "1.9.10"]
                  ; need different httpclient rev for https://issues.apache.org/jira/browse/HTTPCLIENT-1118
                  [org.apache.httpcomponents/httpclient "4.2.1"]]
-  
+
   :deploy-repositories {"releases" {:url "https://clojars.org/repo/" :creds :gpg}
                         "snapshots" {:url "https://clojars.org/repo/" :creds :gpg}}
-  
+
   :profiles {:dev {:dependencies [[ring-mock "0.1.1"]
                                   [compojure "1.1.5"]
                                   [ring "1.2.0"]
