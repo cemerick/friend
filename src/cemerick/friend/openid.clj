@@ -77,7 +77,7 @@
           (into ^{:type type} {}))))))
 
 (defn- build-credentials
-  [^VerificationResult verification]
+  [^VerificationResult verification {:keys [attribute-exchange-properties]}]
   (when-let [identification (some-> verification .getVerifiedId .getIdentifier)]
     (let [response (.getAuthResponse verification)]
       (reduce merge (cons {:identity identification} (gather-attr-maps response attribute-exchange-properties))))))
