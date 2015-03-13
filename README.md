@@ -77,7 +77,7 @@ Friend has been built with one eye on a number of frameworks.
 * [spring-security](http://static.springsource.org/spring-security/)
 * [everyauth](https://github.com/bnoguchi/everyauth)
 * [omniauth](https://github.com/intridea/omniauth)
-* [sandbar](https://github.com/brentonashworth/sandbar)
+* sandbar (defunct)
 
 ### Status
 
