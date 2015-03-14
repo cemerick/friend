@@ -84,8 +84,8 @@
   up stored user credentials given a username/id. e.g.:
 
   (authenticate {:credential-fn (partial pbkdf2-credential-fn load-user-record)
-  :other :config ...}
-  ring-handler-to-be-secured)
+                 :other :config ...}
+    ring-handler-to-be-secured)
 
   If the provided (cleartext, user-supplied) password matches the
   hashed password in the credentials map, that map is returned.
@@ -97,7 +97,7 @@
   a :cemerick.friend.credentials/password-key slot in the map's
   metadata.  So, if a credentials map looks like:
 
-  {:username \"joe\" :app.foo/passphrase \"bcrypt hash\"}
+  {:username \"joe\" :app.foo/passphrase \"pbkdf2 hash\"}
 
   ...then the hash will be verified correctly as long as the
   credentials map contains
@@ -110,7 +110,8 @@
   cost parameter (defaults to 2^15) can be specified, but it must be a
   power of 2. If the :cpu parameter is specified, then
   optional :para (defaults to 1) and :ram (defaults to 8) parameters
-  can be specified for the memory cost and para factor respectively"
+  can be specified for the memory cost and parallelization factor
+  respectively"
   [password & {:keys [cpu ram para]}]
   (if cpu
     (if (and ram para)
@@ -131,8 +132,8 @@
   up stored user credentials given a username/id. e.g.:
 
   (authenticate {:credential-fn (partial scrypt-credential-fn load-user-record)
-  :other :config ...}
-  ring-handler-to-be-secured)
+                 :other :config ...}
+    ring-handler-to-be-secured)
 
   If the provided (cleartext, user-supplied) password matches the
   hashed password in the credentials map, that map is returned.
@@ -144,7 +145,7 @@
   a :cemerick.friend.credentials/password-key slot in the map's
   metadata.  So, if a credentials map looks like:
 
-  {:username \"joe\" :app.foo/passphrase \"bcrypt hash\"}
+  {:username \"joe\" :app.foo/passphrase \"scrypt hash\"}
 
   ...then the hash will be verified correctly as long as the
   credentials map contains
