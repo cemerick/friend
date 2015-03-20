@@ -120,7 +120,7 @@
         (is (= "Sorry, you do not have access to this resource." (:body resp)))))
     
     (http/post (url "/login") {:form-params {:username "root" :password "admin_password"}})
-    (is (= (page-bodies "/hook-admin")) (http/get (url "/hook-admin")))))
+    (is (= (page-bodies "/hook-admin") (:body (http/get (url "/hook-admin")))))))
 
 (deftest authorization-failure-available-to-handler
   (binding [clj-http.core/*cookie-store* (clj-http.cookies/cookie-store)]
@@ -156,9 +156,9 @@
       (http/get (url "/wat"))
       (assert false)
       (catch [:status 404] e))
-    (is (= (page-bodies "/admin")) (http/get (url "/admin")))
+    (is (= (page-bodies "/admin") (:body (http/get (url "/admin")))))
     
-    (is (= (page-bodies "/")) (http/get (url "/logout")))
+    (is (= (page-bodies "/") (:body (http/get (url "/logout")))))
     (is (= (page-bodies "/login") (:body (http/get (url "/admin")))))))
 
 ;;;; TODO
