@@ -137,7 +137,7 @@
     (is (= (page-bodies "/login") (:body (http/get (url "/admin")))))
     
     (http/post (url "/login") {:form-params {:username "root" :password "admin_password"}})
-    (is (= (page-bodies "/admin")) (http/get (url "/admin")))
+    (is (= (page-bodies "/admin") (:body (http/get (url "/admin")))))
     (check-user-role-access)
     (is (= {:roles ["test-friend.mock-app/admin"]} (:body (http/get (url "/echo-roles") {:as :json}))))))
 
