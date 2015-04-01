@@ -14,7 +14,7 @@
                  [commons-codec "1.6"]
 
                  ;; openid
-                 [org.clojure/core.cache "0.6.3"]
+                 [org.clojure/core.cache "0.6.4"]
                  [org.openid4java/openid4java-nodeps "0.9.6"
                   ; the openid4java artifact refers to a now-disappeared guice repo that
                   ; was previously hosted via google code svn :X
