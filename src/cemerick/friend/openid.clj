@@ -13,7 +13,8 @@
                            InMemoryNonceVerifier)
            (org.openid4java.message Message AuthRequest ParameterList MessageException)
            (org.openid4java.message.ax AxMessage FetchRequest FetchResponse)
-           (org.openid4java.message.sreg SRegMessage SRegRequest SRegResponse)))
+           (org.openid4java.message.sreg SRegMessage SRegRequest SRegResponse)
+           (java.util Map)))
 
 (def default-ax-props {"country" "http://axschema.org/contact/country/home"
                        "email" "http://axschema.org/contact/email"
@@ -25,14 +26,14 @@
   ["nickname", "email", "fullname", "dob",
    "gender", "postcode", "country", "language", "timezone"])
 
-(defn- request-attribute-exchange
+(defn- ^AuthRequest request-attribute-exchange
   [ax-props ^AuthRequest auth-req]
   ;; might as well carpet-bomb for attributes
   (doto auth-req
-    (.addExtension (reduce #(doto % (.addAttribute %2 true))
+    (.addExtension (reduce #(doto ^SRegRequest % (.addAttribute %2 true))
                            (SRegRequest/createFetchRequest)
                            sreg-attrs))
-    (.addExtension (reduce (fn [fr [k v]]
+    (.addExtension (reduce (fn [^FetchRequest fr [k v]]
                              (.addAttribute fr k v true)
                              fr)
                            (FetchRequest/createFetchRequest)
@@ -44,10 +45,10 @@
       (util/original-url request)))
 
 (defn- handle-init
-  [^ConsumerManager mgr discovery-cache user-identifier {:keys [session] :as request} realm ax-props]
+  [^ConsumerManager mgr discovery-cache user-identifier {:keys [session] :as request} ^String realm ax-props]
   (let [discoveries (.discover mgr user-identifier)
         provider-info (.associate mgr discoveries)
-        return-url (return-url request)
+        ^String return-url (return-url request)
         auth-req (request-attribute-exchange ax-props
                   (if realm
                     (.authenticate mgr provider-info return-url realm)
@@ -85,7 +86,7 @@
 ;; we end up leaving a string in the user session, but at least it's not an unreadable,
 ;; unprintable org.openid4java.discovery.DiscoveryInformation object
 (defn- handle-return
-  [^ConsumerManager mgr discovery-cache {:keys [params session] :as req} openid-config]
+  [^ConsumerManager mgr discovery-cache {:keys [^Map params session] :as req} openid-config]
   (let [provider-info (get @discovery-cache (::openid-disc session))
         url (return-url req)
         plist (ParameterList. params)
