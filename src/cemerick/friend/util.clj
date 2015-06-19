@@ -15,6 +15,7 @@
   ;; middleware...
   (let [forwarded-port (get headers "x-forwarded-port")
         forwarded-proto (get headers "x-forwarded-proto")
+        forwarded-host (get headers "x-forwarded-host")
         scheme (name (or forwarded-proto scheme))
         port (cond
                forwarded-port (str \: forwarded-port)
@@ -22,7 +23,7 @@
                (and (= "http" scheme) (not= server-port 80)) (str \: server-port)
                (and (= "https" scheme) (not= server-port 443)) (str \: server-port)
                :else nil)]
-    (str scheme "://" server-name
+    (str scheme "://" (or forwarded-host server-name)
          port
          uri
          (when (seq query-string)
