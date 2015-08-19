@@ -1,7 +1,7 @@
 (ns cemerick.friend.workflows
   (:require [cemerick.friend :as friend]
             [cemerick.friend.util :as util]
-            [cemerick.friend.credentials :as creds :refer [remember-me]]
+            [cemerick.friend.credentials :as creds :refer [remember-me hash-bcrypt]]
             [ring.util.request :as req]
             [clojure.tools.trace :refer :all]
             [clojure.edn :only (read-string)])
@@ -88,49 +88,80 @@
           param)
         request))))
 
-
-(defn interactive-form
-  [& {:keys [login-uri credential-fn login-failure-handler redirect-on-auth?] :as form-config
-      :or {redirect-on-auth? true}}]
-  (fn [{:keys [request-method params form-params] :as request}]
-    (when (and (= (gets :login-uri form-config (::friend/auth-config request)) (req/path-info request))
+(deftrace interactive-form* [form-config redirect-on-auth? {:keys [request-method params form-params] :as request}]
+  (when (and (= (gets :login-uri form-config (::friend/auth-config request)) (req/path-info request))
                (= :post request-method))
       (let [creds {:username (username form-params params)
                    :password (password form-params params)
                    :remember-me? (remember-me? form-params params)}
             {:keys [username password remember-me?]} creds]
-        (trace "interactive-form creds" creds)
         (if-let [user-record  (and username password
                                    ((gets :credential-fn form-config (::friend/auth-config request))
                                     (with-meta creds {::friend/workflow :interactive-form})))]
           (let [some-meta {::friend/workflow :interactive-form
                            ::friend/redirect-on-auth? redirect-on-auth?}]
-            (trace "interactive-form user-record" user-record)
             (make-auth user-record some-meta))
-          (trace "interactive-form else return " ((or (gets :login-failure-handler form-config (::friend/auth-config request)) #'interactive-login-redirect)
-                                                  (update-in request [::friend/auth-config] merge form-config))))))))
+          ((or (gets :login-failure-handler form-config (::friend/auth-config request)) #'interactive-login-redirect)
+           (update-in request [::friend/auth-config] merge form-config))))))
+
+(defn interactive-form
+  [& {:keys [login-uri credential-fn login-failure-handler redirect-on-auth?] :as form-config
+      :or {redirect-on-auth? true}}]
+  (partial interactive-form* form-config redirect-on-auth?))
 
 
-  (defn read-cookie-value [rem-me-cookie-value]
-    (let [value (clojure.edn/read-string rem-me-cookie-value)]
-      (if (coll? value) value (str value))))
+(defn read-cookie-value [rem-me-cookie-value]
+  (let [value (clojure.edn/read-string rem-me-cookie-value)]
+    (if (coll? value) value (str value))))
 
+(def ^:private hash-bcrypt-memoized (memoize creds/hash-bcrypt))
+
+(defn identify
+  "assign identity to an anonymous request for tracking its future behavior,
+  if an id is present in the request inside a cookie then authenticate through remember-me feature"
+  [& {:keys [login-uri credential-fn remember-me-fn login-failure-handler cookie-name redirect-on-auth? identify-user-fn! save-remember-me-fn!] :as form-config
+      :or {cookie-name "remember-me"}}]
+  (fn [request]
+    (let [cookie (read-cookie-value (get-in request [:cookies cookie-name :value]))]
+      ;;identify if not on login page
+      (if (not (= (gets :login-uri form-config (::friend/auth-config request)) (req/path-info request)))
+        (if (not-empty cookie)
+          (if-let [user-record-with-rem-me ((gets :remember-me-fn
+                                                  form-config
+                                                  (::friend/auth-config request))
+                                            (with-meta {:remember-me-cookie-value cookie} {::friend/workflow :remember-me-hash}))]
+            (make-auth user-record-with-rem-me
+                       {::friend/workflow :remember-me-hash
+                        ::friend/redirect-on-auth? false})
+            )
+          ;;no identify data found, generate anonymous identity for that user
+          (let [ip (:remote-addr request)
+                browser-fingerprint (or (:browser-fingerprint (:params request)) "none")
+                identify-user-fn! (gets :identify-user-fn!
+                                        form-config
+                                        (::friend/auth-config request))
+                save-remember-me-fn! (gets :save-remember-me-fn!
+                                           form-config
+                                           (::friend/auth-config request))
+                user (identify-user-fn! {:ip ip :browser-fingerprint browser-fingerprint})
+                user-record (creds/remember-me save-remember-me-fn! user)]
+            (make-auth user-record {::friend/workflow :identify
+                                    ::friend/redirect-on-auth? false})
+            )
+          )))))
 
 (defn remember-me-hash
   "workflow for dealing with a hash if it is present in a cookie"
   [& {:keys [login-uri credential-fn remember-me-fn login-failure-handler cookie-name redirect-on-auth?] :as form-config
       :or {cookie-name "remember-me"}}]
   (fn [request]
-    (trace "remember-me-hash req" request)
-    (trace "remember-me-hash let" (let [cookie (read-cookie-value (get-in request [:cookies cookie-name :value]))]
-                                    (if (not-empty cookie)
-                                      (if-let [user-record-with-rem-me ((gets :remember-me-fn
-                                                                              form-config
-                                                                              (::friend/auth-config request))
-                                                                        (with-meta {:remember-me-cookie-value cookie} {::friend/workflow :remember-me-hash}))]
-                                        (make-auth user-record-with-rem-me
-                                                   {::friend/workflow :remember-me-hash
-                                                    ::friend/redirect-on-auth? false}))
-                                      )))))
-
-(trace-ns 'cemerick.friend.workflows)
+    (let [cookie (read-cookie-value (get-in request [:cookies cookie-name :value]))]
+      (if (not-empty cookie)
+        (if-let [user-record-with-rem-me ((gets :remember-me-fn
+                                                form-config
+                                                (::friend/auth-config request))
+                                          (with-meta {:remember-me-cookie-value cookie} {::friend/workflow :remember-me-hash}))]
+          (make-auth user-record-with-rem-me
+                     {::friend/workflow          :remember-me-hash
+                      ::friend/redirect-on-auth? false}))
+        ))))

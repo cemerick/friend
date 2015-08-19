@@ -13,4 +13,6 @@ pom.xml*
 .settings
 .DS_Store
 .#*
+.idea
+.lein
 .externalToolBuilders

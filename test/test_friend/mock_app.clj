@@ -9,7 +9,8 @@
             [ring.util.response :as resp]
             (compojure [handler :as handler]
                        [route :as route]))
-  (:use [compojure.core :as compojure :only (GET POST ANY defroutes)]))
+  (:use [compojure.core :as compojure :only (GET POST ANY defroutes)])
+  (:import [java.util UUID]))
 
 
 (def page-bodies {"/login" "Login page here."
@@ -46,6 +47,12 @@
 (defn- admin-hook-authorized-fn
   [request]
   (page-bodies (:uri request)))
+
+(defn- identify-user-fn [{:keys [ip browser-fingerprint] :as user}]
+  (println "identify-user-fn " ip browser-fingerprint)
+  {:userid (.toString (UUID/randomUUID))
+   :ip ip
+   :browser-fingerprint browser-fingerprint})
 
 (hooke/add-hook #'admin-hook-authorized-fn
                 (partial friend/authorize-hook #{::admin}))
@@ -98,7 +105,6 @@
   (GET "/fire-missles" request (friend/authorize #{::admin}
                                  {:response-msg "403 message thrown with unauthorized stone"}
                                  (reset! missles-fired? "shouldn't happen")))
-
   (GET "/view-openid" request
        (str "OpenId authentication? " (some-> request friend/identity friend/current-authentication pr-str)))
 
@@ -129,17 +135,20 @@
                            :password (creds/hash-bcrypt "api-pass")
                            :roles #{:api}}})
 
-
 (def mock-app
   (-> mock-app*
       (friend/authenticate
        {:credential-fn (partial creds/bcrypt-credential-fn users (partial swap! remember-me-map assoc))
-        :reset-remember-me-fn (partial dissoc (deref remember-me-map))
+        :identify-user-fn! identify-user-fn
+        :reset-remember-me-fn! (partial dissoc (deref remember-me-map))
+        :save-remember-me-fn! (partial swap! remember-me-map assoc)
         :remember-me-fn (partial creds/remember-me-hash-fn users (fn [key] (get (deref remember-me-map) key)))
         :unauthorized-handler #(if-let [msg (-> % ::friend/authorization-failure :response-msg)]
                                  {:status 403 :body msg}
                                  (#'friend/default-unauthorized-handler %))
-        :workflows [(workflows/remember-me-hash)
+        :workflows [
+                    (workflows/identify)
+                    (workflows/remember-me-hash)
                     (workflows/interactive-form)
                     ;; TODO move openid test into its own ns
                     (openid/workflow :credential-fn identity)]})

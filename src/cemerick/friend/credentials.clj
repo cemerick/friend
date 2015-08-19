@@ -21,30 +21,30 @@ the result of previously hashing that password."
   [password hash]
   (BCrypt/checkpw password hash))
 
-(defn- remember-me-str [{:keys [username password-hash expiration-time salt]}]
-  (str "username=" username
-       ":password-hash=" password-hash
+(defn- remember-me-str [{:keys [userid password-crypted expiration-time salt]}]
+  (str "userid=" userid
+       ":password-crypted=" password-crypted
        ":expiration-time=" expiration-time
        ":salt=" salt))
 
 (defn- encode-remember-me-hash-cookie-value
   "generate the cookie value made of:
-  base64({:username username
+  base64({:userid userid
           :expiration-time expiration-time
-          :hash (bcrypt {:username username
+          :hash (bcrypt {:userid userid
                          :expiration-time expiration-time
                          :password-hash password-hash
                          :key key})})
   with:
-  * username:        the id of the user
+  * userid:        the id of the user
   * password-hash:   the user password hash as found in the creds
   * expiration-time: the time when the cookie will expire expressed in milliseconds
   * key:             a unique key (salt) to prevent modification of the cookie hash, defined with a java random UUID
   validity-duration is a duration in milliseconds that define the expiration time (now + validation duration = expiration time)"
-  [{:keys [username password-hash expiration-time salt] :as all}]
+  [{:keys [userid password-crypted expiration-time salt] :as all}]
   (Base64/encodeBase64String
    (.getBytes
-    (str "{:username \"" username "\""
+    (str "{:userid \"" userid "\""
          " :expiration-time " expiration-time
          " :hash \"" (hash-bcrypt (remember-me-str all)) "\"}"))))
 
@@ -57,17 +57,18 @@ the result of previously hashing that password."
     (catch RuntimeException e nil)))
 
 (defn remember-me [save-remember-me-fn! creds]
-  (let [remember-me-data {:username (:username creds)
-                          :password-hash (:password creds)
+  (let [remember-me-data {:userid (:userid creds)
+                          :password-crypted (:password-crypted creds)
                           :expiration-time (+ (System/currentTimeMillis) 2592000000);;30 days
                           :salt (.toString (UUID/randomUUID))}
         cookie-value (encode-remember-me-hash-cookie-value remember-me-data)]
-    (save-remember-me-fn! (:username creds) remember-me-data)
-    (dissoc (merge creds (assoc remember-me-data :remember-me-cookie-value cookie-value)) :salt :password-hash)))
+    (save-remember-me-fn! (:userid creds) remember-me-data)
+    (dissoc (merge creds (assoc remember-me-data :remember-me-cookie-value cookie-value)) :salt :password-crypted)))
 
 (defn bcrypt-credential-fn
   "A bcrypt credentials function intended to be used with `cemerick.friend/authenticate`
    or individual authentication workflows.  You must supply a function of one argument
+
    that will look up stored user credentials given a username/id.  e.g.:
 
    (authenticate {:credential-fn (partial bcrypt-credential-fn load-user-record)

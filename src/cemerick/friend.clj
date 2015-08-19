@@ -86,7 +86,7 @@ being added back into the final response)."
   with the storage fn provided with auth-config"
   [request]
    (let [username (get-in request [:session ::identity :current])
-         reset-remember-me-fn! (get-in request [::auth-config :reset-remember-me-fn])]
+         reset-remember-me-fn! (get-in request [::auth-config :reset-remember-me-fn!])]
      (reset-remember-me-fn! username)))
 
 (defn logout
@@ -161,6 +161,8 @@ Equivalent to (complement current-authentication)."}
     (assoc response :session (assoc (or (:session response) (:session request))
                                     ::identity identity))
     response))
+
+
 
 (defn- redirect-new-auth
   [authentication-map request]
@@ -422,4 +424,3 @@ or joda-time (clj-time) compatible instant/partial."
       (throw-unauthorized (identity request)
                           {::wrapped-handler handler
                            ::required-roles roles}))))
-(trace-ns 'cemerick.friend)

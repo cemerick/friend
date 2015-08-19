@@ -34,7 +34,7 @@
                    :dependencies [[org.clojure/tools.namespace "0.2.7"]
                                   [org.clojure/java.classpath "0.2.2"]
                                   [ring-mock "0.1.1"]
-                                  [aprint "0.1.1"]
+                                  [aprint "0.1.3-SNAPSHOT"]
                                   [compojure "1.1.5"]
                                   [ring "1.2.0"]
                                   [robert/hooke "1.3.0"]
