@@ -16,3 +16,8 @@ pom.xml*
 .idea
 .lein
 .externalToolBuilders
+.nrepl-port
+.lein-repl-history
+*.iml
+*.paw
+dev
