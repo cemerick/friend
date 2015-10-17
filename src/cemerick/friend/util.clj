@@ -8,6 +8,9 @@
         first
         val))
 
+(defn first-non-nil [xs]
+  (first (drop-while nil? xs)))
+
 (defn original-url
   [{:keys [scheme server-name server-port uri query-string headers]}]
   ;; If your proxy doesn't send x-forwarded-proto headers, then you'll need to
