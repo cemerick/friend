@@ -1,5 +1,18 @@
 ## [Friend](http://github.com/cemerick/friend) changelog
 
+### `0.2.2`
+
+* Bumped some dependencies to prevent fatal errors when used in conjunction with
+other libraries, certain versions of Clojure (gh-116, gh-127)
+* OpenId workflow can now be initialized via an HTTP GET request (contra the
+spec?) to interop with existing SSO systems (gh-114, gh-44)
+* `wrap-authorize` now requires its role parameter to be non-empty (gh-99)
+* `robert-hooke` is now properly classified as a test dependency (gh-106)
+
+There are other changes, please see the [full list of issues resolved leading up
+to this release](https://github.com/cemerick/friend/issues?q=milestone%3A0.2.2+is%3Aclosed),
+and the commit history if you're super-interested.
+
 ### [`0.2.1`](https://github.com/cemerick/friend/issues?milestone=7&page=1&state=closed)
 
 * Added `:cemerick.friend/ensure-session` as an optional slot workflows can add
