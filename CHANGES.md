@@ -1,5 +1,11 @@
 ## [Friend](http://github.com/cemerick/friend) changelog
 
+### `0.2.3`
+
+* Deprecated and un-documented friend's "channel security" features. You should
+use https://github.com/ring-clojure/ring-ssl instead, probably via
+https://github.com/ring-clojure/ring-defaults.
+
 ### `0.2.2`
 
 * Bumped some dependencies to prevent fatal errors when used in conjunction with
