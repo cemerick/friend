@@ -5,10 +5,13 @@
         [slingshot.slingshot :only (throw+ try+)])
   (:refer-clojure :exclude (identity)))
 
-(def ^{:dynamic true} *default-scheme-ports* {:http 80 :https 443})
+(def ^:dynamic ^:deprecated *default-scheme-ports* {:http 80 :https 443})
 
-(defn requires-scheme
-  "Ring middleware that requires that the given handler be accessed using
+(defn ^:deprecated requires-scheme
+  "DEPRECATED. Use https://github.com/ring-clojure/ring-ssl instead,
+   perhaps via https://github.com/ring-clojure/ring-defaults.
+
+   Ring middleware that requires that the given handler be accessed using
    the specified scheme (:http or :https), a.k.a. channel security.
    Will use the optional map of scheme -> port numbers to determine the
    port to redirect to (defaults defined in *default-scheme-ports*).
@@ -38,9 +41,11 @@
                                            :server-port (scheme-mapping scheme))))
             (assoc :status status))))))
 
-; TODO should requires-scheme always take x-forwarded-proto into account?
-(defn requires-scheme-with-proxy
-  "Ring middleware similar to friend/requires-scheme that should be
+(defn ^:deprecated requires-scheme-with-proxy
+  "DEPRECATED. Use https://github.com/ring-clojure/ring-ssl instead,
+   perhaps via https://github.com/ring-clojure/ring-defaults.
+  
+  Ring middleware similar to friend/requires-scheme that should be
   able to handle things like load balancers in Amazon's elastic
   beanstalk and heroku in addition to other load balancers and reverse
   proxies that use x-forwarded-proto and thus don't set :scheme in the

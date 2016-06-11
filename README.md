@@ -42,11 +42,9 @@ apps:
   multiple simultaneous logins, as well as to allow administrators to
   take on users' identities for debugging or support purposes (**in
       progress**)
-* channel security (restricting certain resources to a particular
-  protocol/scheme, usually HTTPS)
 * and the creature comforts:
   * Ring middlewares for configuring and defining the scopes of
-    authentication, authorization, and channel security
+    authentication and authorization
   * Macros to clearly demarcate the scope of authentication and
     authorization within code that is "below" the level of Ring handlers
     where you can't use middlewares.
@@ -398,36 +396,6 @@ a user with the `::user` role:
 
 Of course, you are free to construct your role hierarchy(ies) however
 you like, to suit your application and your security requirements.
-
-### Channel security
-
-_Channel security_ is the redirection of requests for a given resource
-through a specific channel, i.e. requiring that logins or a payment
-workflow is performed over HTTPS instead over HTTP.
-
-`requires-scheme` is Ring middleware that enforces channel security for
-a given Ring handler:
-
-```clojure
-(use '[cemerick.friend :only (requires-scheme *default-scheme-ports*)])
-
-; HTTP requests routed to https-routes will be redirected to the
-; corresponding HTTPS URL on the default port
-(def https-routes (requires-scheme routes :https))
-
-; HTTP requests routed to custom-https-port-routes be redirected to the
-; corresponding HTTPS URL on port 8443
-(def custom-https-port-routes (requires-scheme routes :https {:https 8443}))
-
-; alternative default ports for HTTP and HTTPS may be bound dynamically
-; to simplify configuration of multiple routes
-(binding [*default-scheme-ports* {:http 8080 :https 8443}]
-  (def http-routes (requires-scheme routes :http))
-  (def https-routes (requires-scheme routes :https)))
-```
-
-Note that `requires-scheme` is unrelated to the authentication,
-authorization, etc facilities in Friend, and can be used in isolation.
 
 ### Nginx configuration
 
