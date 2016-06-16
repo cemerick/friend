@@ -3,7 +3,7 @@
             [cemerick.friend.util :as util]
             [ring.util.request :as req])
   (:use [clojure.string :only (trim)]
-        [cemerick.friend.util :only (gets)])
+        [cemerick.friend.util :refer [gets first-non-nil]])
   (:import org.apache.commons.codec.binary.Base64))
 
 (defn http-basic-deny
@@ -78,19 +78,19 @@
         request))))
 
 (defn interactive-form
-  [& {:keys [login-uri credential-fn login-failure-handler redirect-on-auth?] :as form-config
-      :or {redirect-on-auth? true}}]
+  [& {:as form-config}]
   (fn [{:keys [request-method params form-params] :as request}]
-    (when (and (= (gets :login-uri form-config (::friend/auth-config request)) (req/path-info request))
-               (= :post request-method))
-      (let [creds {:username (username form-params params)
-                   :password (password form-params params)}
-            {:keys [username password]} creds]
-        (if-let [user-record (and username password
-                                  ((gets :credential-fn form-config (::friend/auth-config request))
-                                   (with-meta creds {::friend/workflow :interactive-form})))]
-          (make-auth user-record
-                     {::friend/workflow :interactive-form
-                      ::friend/redirect-on-auth? redirect-on-auth?})
-          ((or (gets :login-failure-handler form-config (::friend/auth-config request)) #'interactive-login-redirect)
-           (update-in request [::friend/auth-config] merge form-config)))))))
+    (let [auth-config (request ::friend/auth-config)]
+      (when (and (= (gets :login-uri form-config auth-config) (req/path-info request))
+                 (= :post request-method))
+        (let [creds {:username (username form-params params)
+                     :password (password form-params params)}
+              {:keys [username password]} creds]
+          (if-let [user-record (and username password
+                                    ((gets :credential-fn form-config auth-config)
+                                      (with-meta creds {::friend/workflow :interactive-form})))]
+            (make-auth user-record
+                       {::friend/workflow          :interactive-form
+                        ::friend/redirect-on-auth? (first-non-nil [(gets :redirect-on-auth? form-config auth-config) true])})
+            ((or (gets :login-failure-handler form-config auth-config) #'interactive-login-redirect)
+              (update-in request [::friend/auth-config] merge form-config))))))))

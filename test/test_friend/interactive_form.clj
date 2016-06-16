@@ -43,4 +43,30 @@
       (is (= auth {:identity "Aladdin"}))
       (is (= (meta auth) {::friend/workflow :interactive-form
                           :type ::friend/auth
-                          ::friend/redirect-on-auth? true})))))
+                          ::friend/redirect-on-auth? true})))
+
+    (testing "redirect-on-auth? can be specified when creating the workflow"
+      (let [form-handler (interactive-form :login-uri login-uri
+                                           :credential-fn (constantly {:identity "Aladdin"})
+                                           :redirect-on-auth? false)
+            auth (form-handler (assoc (request :post login-uri)
+                                 :params {:username "irrelevant but necessary"
+                                          :password "irrelevant but necessary"}))]
+        (is (= false (::friend/redirect-on-auth? (meta auth))))))
+
+    (testing "redirect-on-auth? is overloaded with global configuration when not specified when creating the workflow"
+      (let [form-handler (interactive-form :login-uri login-uri
+                                                 :credential-fn (constantly {:identity "Aladdin"}))
+                  auth (form-handler (assoc (request :post login-uri)
+                                       :params {:username "irrelevant but necessary"
+                                                :password "irrelevant but necessary"}
+                                       ::friend/auth-config {:redirect-on-auth? false}))]
+              (is (= false (::friend/redirect-on-auth? (meta auth))))))
+
+    (testing "redirect-on-auth? defaults to true when it's never specified"
+      (let [form-handler (interactive-form :login-uri login-uri
+                                                       :credential-fn (constantly {:identity "Aladdin"}))
+                        auth (form-handler (assoc (request :post login-uri)
+                                             :params {:username "irrelevant but necessary"
+                                                      :password "irrelevant but necessary"}))]
+                    (is (= true (::friend/redirect-on-auth? (meta auth))))))))
