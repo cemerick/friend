@@ -5,67 +5,6 @@
         [slingshot.slingshot :only (throw+ try+)])
   (:refer-clojure :exclude (identity)))
 
-(def ^:dynamic ^:deprecated *default-scheme-ports* {:http 80 :https 443})
-
-(defn ^:deprecated requires-scheme
-  "DEPRECATED. Use https://github.com/ring-clojure/ring-ssl instead,
-   perhaps via https://github.com/ring-clojure/ring-defaults.
-
-   Ring middleware that requires that the given handler be accessed using
-   the specified scheme (:http or :https), a.k.a. channel security.
-   Will use the optional map of scheme -> port numbers to determine the
-   port to redirect to (defaults defined in *default-scheme-ports*).
-
-       (requires-scheme ring-handler :https)
-
-   ...will redirect an http request to the same uri, but with an https
-   scheme and default 443 port.
-
-       (requires-scheme ring-handler :https {:https 8443})
-
-   ...will redirect an http request to the same uri, but with an https
-   scheme and to port 8443.
-
-   By default, a 302 (found) redirect will be performed. For SEO reasons
-   a 301 (moved permanently) redirect may be preferable, in which case
-   the the actual status code to use can be specified with
-   the :status option."
-  ([handler scheme]
-    (requires-scheme handler scheme *default-scheme-ports*))
-  ([handler scheme scheme-mapping & {:keys [status] :or {status 302}}]
-    (fn [request]
-      (if (= (:scheme request) scheme)
-        (handler request)
-        (-> (redirect (util/original-url (assoc request
-                                           :scheme scheme
-                                           :server-port (scheme-mapping scheme))))
-            (assoc :status status))))))
-
-(defn ^:deprecated requires-scheme-with-proxy
-  "DEPRECATED. Use https://github.com/ring-clojure/ring-ssl instead,
-   perhaps via https://github.com/ring-clojure/ring-defaults.
-  
-  Ring middleware similar to friend/requires-scheme that should be
-  able to handle things like load balancers in Amazon's elastic
-  beanstalk and heroku in addition to other load balancers and reverse
-  proxies that use x-forwarded-proto and thus don't set :scheme in the
-  request map properly. Do not use if your application server is
-  directly facing the internet as these headers are *very* easy to
-  forge."
-  ([handler scheme]
-     (requires-scheme-with-proxy handler scheme *default-scheme-ports*))
-  ([handler scheme scheme-mapping & {:keys [status] :or {status 302}}]
-     (fn [request]
-       (if (= (get-in request [:headers "x-forwarded-proto"]) (name scheme))
-         (handler request)
-         (-> (redirect (util/original-url
-                        (-> request
-                            (dissoc :headers)
-                            (assoc :scheme scheme
-                                   :server-port (scheme-mapping scheme)))))
-             (assoc :status status))))))
-
-
 (defn merge-authentication
   [m auth]
   (update-in m [:session ::identity]
@@ -130,19 +69,13 @@ Providing the Ring request map explicitly is strongly encouraged, to avoid
 any funny-business related to the dynamic binding of `*identity*`."
   ([] (current-authentication *identity*))
   ([identity-or-ring-map]
-    (let [identity (or (identity identity-or-ring-map)
+   (let [identity (or (identity identity-or-ring-map)
                      identity-or-ring-map)]
       (-> identity :authentications (get (:current identity))))))
 
 (def ^{:doc "Returns true only if the provided request/response has no identity.
 Equivalent to (complement current-authentication)."}
       anonymous? (complement current-authentication))
-
-(defn- ring-response
-  [resp]
-  (if (response/response? resp)
-    resp
-    (response/response resp)))
 
 (defn- ensure-identity
   [response request]
@@ -157,8 +90,9 @@ Equivalent to (complement current-authentication)."}
     (let [unauthorized-uri (-> request :session ::unauthorized-uri)
           resp (response/redirect-after-post
                  (or unauthorized-uri
-                     (and (string? redirect) redirect)
-                      (str (:context request) (-> request ::auth-config :default-landing-uri ))))]
+                     (if (string? redirect)
+                       redirect
+                       (str (:context request) (-> request ::auth-config :default-landing-uri)))))]
       (if unauthorized-uri
         (-> resp
           (assoc :session (:session request))
