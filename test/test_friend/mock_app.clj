@@ -1,8 +1,7 @@
 (ns test-friend.mock-app
   (:require [cemerick.friend :as friend]
             (cemerick.friend [workflows :as workflows]
-                             [credentials :as creds]
-                             [openid :as openid])
+                             [credentials :as creds])
             [cheshire.core :as json]
             [robert.hooke :as hooke]
             [hiccup.core :as hiccup]
@@ -47,12 +46,6 @@
 (defroutes ^{:private true} mock-app*
   ;;;;; ANON
   (GET "/" request (page-bodies (:uri request)))
-  ;; TODO move openid test into its own ns
-  (GET "/test-openid" request (hiccup/html [:html
-                                            [:form {:action "/openid" :method "POST"}
-                                             "OpenId endpoint: "
-                                             [:input {:type "text" :name "identifier"}]
-                                             [:input {:type "submit" :name "login"}]]]))
   (GET "/login" request (page-bodies (:uri request)))
   (GET "/free-api" request (api-call 99))
   (friend/logout (ANY "/logout" request (resp/redirect "/")))
@@ -82,9 +75,6 @@
   (GET "/fire-missles" request (friend/authorize #{::admin}
                                  {:response-msg "403 message thrown with unauthorized stone"}
                                  (reset! missles-fired? "shouldn't happen")))
-  
-  (GET "/view-openid" request
-       (str "OpenId authentication? " (some-> request friend/identity friend/current-authentication pr-str)))
   
   ;; FIN
   (route/not-found "404"))
@@ -121,9 +111,7 @@
        :unauthorized-handler #(if-let [msg (-> % ::friend/authorization-failure :response-msg)]
                                 {:status 403 :body msg}
                                 (#'friend/default-unauthorized-handler %)) 
-       :workflows [(workflows/interactive-form)
-                   ;; TODO move openid test into its own ns
-                   (openid/workflow :credential-fn identity)]})
+       :workflows [(workflows/interactive-form)]})
     handler/site))
 
 (def api-app
