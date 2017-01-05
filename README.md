@@ -31,9 +31,9 @@ Friend is intended to provide a foundation for addressing
 all of the authentication and authorization concerns associated with web
 apps:
 
-* user agent authentication; Friend currently includes support for form,
-  HTTP Basic, and OpenId authentication, and makes it easy to:
-  * implement and use other workflows
+* user agent authentication; Friend currently includes support for form and
+  HTTP Basic authentication, and makes it easy to:
+  * implement and use other workflows (e.g oauth, OpenId connect)
   * integrate app-specific user-credential checks
 * role-based authorization
   * optionally uses Clojure's ad-hoc hierarchies to model hierarchical
@@ -95,10 +95,6 @@ Available [here](http://github.com/cemerick/friend/blob/master/CHANGES.md).
   can/should apply to multiple authorization workflows.  Fixes for such
 things will break the existing API.
 * the `su` mechanism is in-progress
-* the OpenId authentication workflow needs to be broken out into a
-  separate project so that those who aren't using it don't suffer its
-transitive dependencies.  (The form and HTTP Basic workflows are
-dependency-free, and will likely remain here.)
 * …surely there's more.  File issues.
 
 ## "Installation"
@@ -399,7 +395,9 @@ you like, to suit your application and your security requirements.
 
 ### Nginx configuration
 
-If you are using Nginx to, e.g, terminate SSL, set the appropriate headers so that the Clojure backend can generate the correct `return-to` URLs for the openid and similar workflows:
+If you are using Nginx to, e.g, terminate SSL, set the appropriate headers 
+so that the Clojure backend can generate the correct `return-to` URLs for 
+the openid and similar workflows:
 
 
 ```nginx

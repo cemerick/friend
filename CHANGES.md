@@ -1,5 +1,15 @@
 ## [Friend](http://github.com/cemerick/friend) changelog
 
+### `0.3.0`
+
+* The "classic" OpenId (i.e. OpenId 1.1/2.0) workflow provided by `cemerick.friend.openid` has been
+  removed, along with the dependencies it alone required. See
+  https://github.com/cemerick/friend/issues/45#issuecomment-270696012 for something like a
+  justification for the change. (gh-45)
+* The "channel security" features (`requires-scheme*` set of middlewares) deprecated in `0.2.3`
+  have been removed.
+* Friend can now be used in IPv6 environments. (gh-154) 
+
 ### `0.2.3`
 
 * Deprecated and un-documented friend's "channel security" features. You should
