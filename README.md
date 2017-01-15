@@ -214,7 +214,9 @@ protected resource once the authentication workflow is completed).
 require `session` in order to support post-authentication redirection to
 previously-unauthorized resources, retention of tokens and nonces for
 workflows like OpenId and oAuth, etc.  HTTP Basic is the only provided
-workflow that does not require `session` middleware.)
+workflow that does not require `session` middleware. In [the demos](http://friend-demo.herokuapp.com),
+all of the necessary middleware is provided by the `compojure.handler/site` 
+composite function.)
 
 ### Workflows
 
