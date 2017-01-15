@@ -43,6 +43,9 @@ the result of previously hashing that password."
    entry."
   [load-credentials-fn {:keys [username password]}]
   (when-let [creds (load-credentials-fn username)]
-    (let [password-key (or (-> creds meta ::password-key) :password)]
-      (when (bcrypt-verify password (get creds password-key))
+    (let [password-key (or (-> creds meta ::password-key) :password)
+          stored-password (get creds password-key)]
+      (when (and
+             (not (empty? stored-password))
+             (bcrypt-verify password stored-password))
         (dissoc creds password-key)))))
