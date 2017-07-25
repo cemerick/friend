@@ -2,7 +2,9 @@
 /lib
 /classes
 /checkouts
+/.idea
 pom.xml*
+*.iml
 *.jar
 *.class
 .lein-deps-sum

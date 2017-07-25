@@ -110,11 +110,21 @@ Equivalent to (complement current-authentication)."}
     (assoc :session (:session request))
     (assoc-in [:session ::unauthorized-uri] (util/original-url request))))
 
+(defn- mark-session-recreate
+  "Instructs ring to issue a new session along with the response."
+  [session]
+  (when session
+    (vary-meta session assoc :recreate true)))
+
 (defn authenticate-response
   "Adds to the response's :session for responses with a :friend/ensure-identity-request key."
   [response request]
   (if-let [new-request (:friend/ensure-identity-request response)]
-    (ensure-identity (dissoc response :friend/ensure-identity-request) new-request)
+    (->
+      response
+      (dissoc :friend/ensure-identity-request)
+      (ensure-identity new-request)
+      (update-in [:session] mark-session-recreate))
     (dissoc response :friend/ensure-identity-request)))
 
 (defn- retry-request
