@@ -1,3 +1,8 @@
+**This library is currently unmaintained. You might want
+to investigate forks for additional enhancements, etc., or alternative 
+approaches generally (e.g. I hear people like 
+[Buddy](https://github.com/funcool/buddy))**
+
 # Friend  [![Travis CI status](https://secure.travis-ci.org/cemerick/friend.png)](http://travis-ci.org/#!/cemerick/friend/builds)
 
 An extensible authentication and authorization library for
