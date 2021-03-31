@@ -6,9 +6,8 @@
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [ring/ring-core "1.2.0"]
+                 [crypto-password "0.1.3"]
                  [slingshot "0.10.2"]
-
-                 [org.mindrot/jbcrypt "0.3m"]
 
                  ;; http-basic
                  [commons-codec "1.6"]]
