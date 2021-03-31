@@ -228,7 +228,9 @@ which contains a map to be called with a ring handler."
    an auxiliary map that is merged to it as the first form of the body
    of code wrapped by `authenticated`."
   [& body]
-  (let [[unauthorized-info body] (if (map? (first body)) body [nil body])]
+  (let [[unauthorized-info body] (if (map? (first body))
+                                   [(first body) (rest body)]
+                                   [nil body])]
     `(if (current-authentication *identity*)
        (do ~@body)
        (#'throw-unauthorized *identity* (merge ~unauthorized-info
